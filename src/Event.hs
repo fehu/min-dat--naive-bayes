@@ -11,15 +11,7 @@ module Event (
 
   Event(Ev, Universal, Null)
 
-, union
-, (&)
-
-, intersection
-, (#)
-
-, complement
-, neg
-
+, EventOps(..)
 
 ) where
 
@@ -49,6 +41,37 @@ instance (Show ev) =>
         show Universal      = "Universe"
         show Null           = "Null"
 
+instance Ord ev => EventOps (Event ev) where union        = union'
+                                             intersection = intersection'
+                                             complement   = complement'
+
+-----------------------------------------------------------------------------
+
+-- | Events operations
+class EventOps event where
+
+    -- | Two events union
+    union :: event -> event -> event
+    -- | alias for 'union'
+    (&) :: event -> event -> event
+
+    -- | Two events intersection
+    intersection :: event -> event -> event
+    -- | alias for 'intersection'
+    (#) :: event -> event -> event
+
+    -- | Event complement
+    complement :: event -> event
+    -- | alias for 'complement'
+    neg :: event -> event
+
+    x & y = x `union` y
+    x # y = x `intersection` y
+    neg = complement
+
+
+
+-----------------------------------------------------------------------------
 
 mkEvent f set | Set.null set      = error "empty union"
               | Set.size set == 1 = Set.findMax set
@@ -60,92 +83,83 @@ mkIntersect = mkEvent Intersect
 -----------------------------------------------------------------------------
 
 -- | Two events union
-union :: (Ord ev) => Event ev -> Event ev -> Event ev
+union' :: (Ord ev) => Event ev -> Event ev -> Event ev
 
---union x@(Ev _)    y@(Ev _)      = Union $ Set.fromList [x, y]
-union x@(Ev _)      (Union ys)  = mkUnion $ Set.insert x ys
-union x@(Union _) y@(Ev _)      = y `union` x
-union (Union xs)    (Union ys)  = mkUnion $ xs `Set.union` ys
+--union' x@(Ev _)    y@(Ev _)      = Union $ Set.fromList [x, y]
+union' x@(Ev _)      (Union ys)  = mkUnion $ Set.insert x ys
+union' x@(Union _) y@(Ev _)      = y `union'` x
+union' (Union xs)    (Union ys)  = mkUnion $ xs `Set.union` ys
 
-union x@(Ev _)         y@(Intersect ys)  = y `union` x
-union x@(Intersect xs) y@(Ev _) | y `Set.member` xs = y
+union' x@(Ev _)         y@(Intersect ys)  = y `union'` x
+union' x@(Intersect xs) y@(Ev _) | y `Set.member` xs = y
                                 | otherwise         = mkUnion $ Set.fromList [x, y]
 
-union x@(Union xs)     y@(Intersect ys) = if any (`Set.member` xs) $ Set.elems ys
+union' x@(Union xs)     y@(Intersect ys) = if any (`Set.member` xs) $ Set.elems ys
                                             then x
                                             else mkUnion $ y `Set.insert` xs
-union x@(Intersect _)  y@(Union _)       = y `union` x
-union x@(Intersect xs) y@(Intersect ys)  = mkIntersect $ Set.fromList l
+union' x@(Intersect _)  y@(Union _)       = y `union'` x
+union' x@(Intersect xs) y@(Intersect ys)  = mkIntersect $ Set.fromList l
                                          where common = xs `Set.intersection` ys
                                                diff   = (xs \\ ys) `Set.union` (ys \\ xs)
                                                l = if not . Set.null $ common
                                                     then [mkIntersect common, mkUnion diff]
                                                     else [x, y]
 
-union (Complement x) (Complement y) = Complement $ x `intersection` y
-union x (Complement y) | x == y     = Universal
-union (Complement x) y | x == y     = Universal
+union' (Complement x) (Complement y) = Complement $ x `intersection'` y
+union' x (Complement y) | x == y     = Universal
+union' (Complement x) y | x == y     = Universal
 
-union Universal _ = Universal
-union _ Universal = Universal
+union' Universal _ = Universal
+union' _ Universal = Universal
 
-union Null x = x
-union x Null = x
+union' Null x = x
+union' x Null = x
 
-union x y = Union $ Set.fromList [x, y]
-
--- | alias for 'union'
-x & y = x `union` y
+union' x y = Union $ Set.fromList [x, y]
 
 -----------------------------------------------------------------------------
 
 -- | Two events intersection
-intersection :: (Ord ev) => Event ev -> Event ev -> Event ev
+intersection' :: (Ord ev) => Event ev -> Event ev -> Event ev
 
-intersection x@(Ev _)           (Intersect ys)  = mkIntersect $ Set.insert x ys
-intersection x@(Intersect _)  y@(Ev _)          = y `intersection` x
-intersection   (Intersect xs)   (Intersect ys)  = mkIntersect $ xs `Set.union` ys
+intersection' x@(Ev _)           (Intersect ys)  = mkIntersect $ Set.insert x ys
+intersection' x@(Intersect _)  y@(Ev _)          = y `intersection'` x
+intersection'   (Intersect xs)   (Intersect ys)  = mkIntersect $ xs `Set.union` ys
 
-intersection x@(Ev _)         y@(Union ys) | x `Set.member` ys = x
+intersection' x@(Ev _)         y@(Union ys) | x `Set.member` ys = x
                                            | otherwise         = mkIntersect $ Set.fromList [x,y]
-intersection x@(Union _)      y@(Ev _)          = y `intersection` x
+intersection' x@(Union _)      y@(Ev _)          = y `intersection'` x
 
-intersection x@(Intersect xs) y@(Union ys) | any (`Set.member` xs) $ Set.elems ys = x
+intersection' x@(Intersect xs) y@(Union ys) | any (`Set.member` xs) $ Set.elems ys = x
                                            | otherwise = mkIntersect $ Set.fromList [x,y]
-intersection x@(Union _)      y@(Intersect _)   = y `intersection` x
-intersection x@(Union xs)     y@(Union ys)      = mkUnion $ Set.fromList l
+intersection' x@(Union _)      y@(Intersect _)   = y `intersection'` x
+intersection' x@(Union xs)     y@(Union ys)      = mkUnion $ Set.fromList l
                                            where common = xs `Set.intersection` ys
                                                  diff   = (xs \\ ys) `Set.union` (ys \\ xs)
                                                  l = if not . Set.null $ common
                                                     then [mkUnion common, mkIntersect diff]
                                                     else [x, y]
 
-intersection (Complement x) (Complement y) = Complement $ x `union` y
-intersection x (Complement y) | x == y     = Null
-intersection (Complement x) y | x == y     = Null
+intersection' (Complement x) (Complement y) = Complement $ x `union'` y
+intersection' x (Complement y) | x == y     = Null
+intersection' (Complement x) y | x == y     = Null
 
-intersection Universal x = x
-intersection x Universal = x
+intersection' Universal x = x
+intersection' x Universal = x
 
-intersection Null _ = Null
-intersection _ Null = Null
+intersection' Null _ = Null
+intersection' _ Null = Null
 
-intersection x y = mkIntersect $ Set.fromList [x,y]
-
--- | alias for 'intersection'
-x # y = x `intersection` y
+intersection' x y = mkIntersect $ Set.fromList [x,y]
 
 -----------------------------------------------------------------------------
 
--- | event complement
-complement :: Event ev -> Event ev
+-- | Event complement
+complement' :: Event ev -> Event ev
 
-complement (Complement e) = e
-complement Universal = Null
-complement Null = Universal
-complement e = Complement e
-
--- | alias for 'complement'
-neg = complement
+complement' (Complement e) = e
+complement' Universal = Null
+complement' Null = Universal
+complement' e = Complement e
 
 

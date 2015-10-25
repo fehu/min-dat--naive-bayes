@@ -14,6 +14,12 @@ import Test.Hspec
 
 spec :: Spec
 spec = do
+
+    let a = Ev 'a'
+    let b = Ev 'b'
+    let c = Ev 'c'
+    let d = Ev 'd'
+
     describe "Event" $ do
 
         specify "an atomic is compared by underlying label" $ example $ do
@@ -22,10 +28,6 @@ spec = do
             Ev [1,2] `shouldBe`    Ev [1,2]
             Ev [1,2] `shouldNotBe` Ev [2,1]
 
-        let a = Ev 'a'
-        let b = Ev 'b'
-        let c = Ev 'c'
-        let d = Ev 'd'
 
         describe "union" $ do
             specify "of atomic events" $
@@ -78,7 +80,21 @@ spec = do
             specify "union"         $ example $ Null & a   `shouldBe` a
             specify "intersection"  $ example $ Null # a   `shouldBe` Null
 
-    describe "Probability" $ do
+--    describe "Probability" $ do
+--
+--        describe "union: P(A) & P(B) -> P(A & B)" $
+--            specify "P(A & B) = P(A) + P(B) - P(A # B)" $
+--                    example $ shouldBe (pUnknown a & pUnknown b)
+--                                       (pUnknown a & pUnknown b & neg (pUnknown (a#b)))
+--
+--        describe "intersection: P(A) & P(B) -> P(A & B)" $
+--            specify "needs to be specified explicitly" $
+--                    example $ ((a ~~ 0.2) # (b ~~ 0.3)) `shouldBe` pUnknown (a#b)
+--
+--        describe "complement: 'P(A) -> P('A)" $
+--            specify "'P(A: p) = P('A: 1-p)" $
+--                    example $ neg (a ~~ 0.2) `shouldBe` (neg a ~~ 0.8)
+
         specify "pending" pending
 
 
