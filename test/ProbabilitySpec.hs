@@ -8,7 +8,7 @@
 
 module ProbabilitySpec (spec) where
 
-import Probability
+import Event.Probability
 
 import Test.Hspec
 

@@ -1,19 +1,15 @@
 -- |
 --
--- Module      :  Probability
+-- Module      :  Event
 -- Description :
 -- License     :  MIT
 -- Stability   :  dev
 --
 --
 
-module Probability (
+module Event (
 
   Event(Ev, Universal, Null)
-, P
-
-, CreateP ((~~))
-, (~|)
 
 , union
 , (&)
@@ -24,11 +20,15 @@ module Probability (
 , complement
 , neg
 
+
 ) where
+
 
 import Data.Set (Set, (\\))
 import Data.List(intercalate)
 import qualified Data.Set as Set
+
+-----------------------------------------------------------------------------
 
 -- | Event container
 data Event ev = Ev ev                       -- ^ An atomic event.
@@ -56,6 +56,8 @@ mkEvent f set | Set.null set      = error "empty union"
 
 mkUnion = mkEvent Union
 mkIntersect = mkEvent Intersect
+
+-----------------------------------------------------------------------------
 
 -- | Two events union
 union :: (Ord ev) => Event ev -> Event ev -> Event ev
@@ -95,6 +97,8 @@ union x y = Union $ Set.fromList [x, y]
 -- | alias for 'union'
 x & y = x `union` y
 
+-----------------------------------------------------------------------------
+
 -- | Two events intersection
 intersection :: (Ord ev) => Event ev -> Event ev -> Event ev
 
@@ -131,6 +135,7 @@ intersection x y = mkIntersect $ Set.fromList [x,y]
 -- | alias for 'intersection'
 x # y = x `intersection` y
 
+-----------------------------------------------------------------------------
 
 -- | event complement
 complement :: Event ev -> Event ev
@@ -142,35 +147,5 @@ complement e = Complement e
 
 -- | alias for 'complement'
 neg = complement
-
-
-
-
-
--- | Probability
-data P ev = P  (Event ev) Float             -- ^ probability of an event
-          | PC (Event ev) (Event ev) Float  -- ^ conditional probability
-
-
-instance Show ev =>
-    Show (P ev) where show (P ev p)    = "P(" ++ show ev ++ ")=" ++ show p
-                      show (PC ev c p) = "P(" ++ show ev ++ "|" ++ show c  ++ ")=" ++ show p
-
-
-class CreateP ev from where (~~) :: from ev -> Float -> P ev -- ^ probability constructor
-
-instance CreateP ev Event   where ev        ~~ p = P ev p
-instance CreateP ev PC'     where (PC' e c) ~~ p = PC e c p
-
-assertP :: Float -> Float
-assertP p | p >= 0 && p <= 1 = p
-          | otherwise        = error $ "probability must be in range [0,1], got " ++ show p
-
-data PC' ev = PC' (Event ev) (Event ev)
-
-
-
-(~|) :: Event ev -> Event ev -> PC' ev
-e ~| cond = PC' e cond
 
 
