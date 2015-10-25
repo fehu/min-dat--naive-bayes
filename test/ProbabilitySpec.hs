@@ -59,5 +59,27 @@ spec = do
                     example $ (a & b) # (a # c)  `shouldBe` a # c
                     example $ (a & b) # (c # d)  `shouldBe` c # d # (a & b)
 
+        describe "complement" $ do
+            specify "complement of complement" $ example $ (neg . neg) a `shouldBe` a
+            specify "union" $ do
+                    example $ neg a & neg b `shouldBe` neg (a # b)
+                    example $ neg a & a     `shouldBe` Universal
+            specify "intersection" $ do
+                    example $ neg a # neg b `shouldBe` neg (a & b)
+                    example $ neg a # a     `shouldBe` Null
+
+        describe "Universal" $ do
+            specify "complement"    $ example $ neg Universal   `shouldBe` (Null :: Event Char)
+            specify "union"         $ example $ Universal & a   `shouldBe` Universal
+            specify "intersection"  $ example $ Universal # a   `shouldBe` a
+
+        describe "Null" $ do
+            specify "complement"    $ example $ neg Null   `shouldBe` (Universal :: Event Char)
+            specify "union"         $ example $ Null & a   `shouldBe` a
+            specify "intersection"  $ example $ Null # a   `shouldBe` Null
+
     describe "Probability" $ do
         specify "pending" pending
+
+
+

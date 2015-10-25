@@ -9,7 +9,7 @@
 
 module Probability (
 
-  Event(Ev)
+  Event(Ev, Universal, Null)
 , P
 
 , CreateP ((~~))
@@ -20,6 +20,9 @@ module Probability (
 
 , intersection
 , (#)
+
+, complement
+, neg
 
 ) where
 
@@ -32,14 +35,19 @@ data Event ev = Ev ev                       -- ^ An atomic event.
               | Union      (Set (Event ev)) -- ^ events union.
               | Intersect  (Set (Event ev)) -- ^ events intersection.
               | Complement (Event ev)       -- ^ event negation.
+              | Universal                   -- ^ event universal set, result of @a & 'a@
+              | Null                        -- ^ empty, result of @a # 'a@
               deriving (Eq, Ord)
 
-instance Show ev =>
+
+instance (Show ev) =>
     Show (Event ev) where
         show (Ev e)         = show e
         show (Union es)     = "(" ++ intercalate "&" (map show $ Set.toList es) ++ ")"
         show (Intersect es) = "(" ++ intercalate "#" (map show $ Set.toList es) ++ ")"
         show (Complement e) = "'" ++ show e
+        show Universal      = "Universe"
+        show Null           = "Null"
 
 
 mkEvent f set | Set.null set      = error "empty union"
@@ -72,12 +80,20 @@ union x@(Intersect xs) y@(Intersect ys)  = mkIntersect $ Set.fromList l
                                                     then [mkIntersect common, mkUnion diff]
                                                     else [x, y]
 
+union (Complement x) (Complement y) = Complement $ x `intersection` y
+union x (Complement y) | x == y     = Universal
+union (Complement x) y | x == y     = Universal
+
+union Universal _ = Universal
+union _ Universal = Universal
+
+union Null x = x
+union x Null = x
 
 union x y = Union $ Set.fromList [x, y]
 
 -- | alias for 'union'
 x & y = x `union` y
-
 
 -- | Two events intersection
 intersection :: (Ord ev) => Event ev -> Event ev -> Event ev
@@ -100,14 +116,32 @@ intersection x@(Union xs)     y@(Union ys)      = mkUnion $ Set.fromList l
                                                     then [mkUnion common, mkIntersect diff]
                                                     else [x, y]
 
+intersection (Complement x) (Complement y) = Complement $ x `union` y
+intersection x (Complement y) | x == y     = Null
+intersection (Complement x) y | x == y     = Null
+
+intersection Universal x = x
+intersection x Universal = x
+
+intersection Null _ = Null
+intersection _ Null = Null
 
 intersection x y = mkIntersect $ Set.fromList [x,y]
 
--- | alias for intersection
+-- | alias for 'intersection'
 x # y = x `intersection` y
 
 
+-- | event complement
+complement :: Event ev -> Event ev
 
+complement (Complement e) = e
+complement Universal = Null
+complement Null = Universal
+complement e = Complement e
+
+-- | alias for 'complement'
+neg = complement
 
 
 
