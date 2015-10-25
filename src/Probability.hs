@@ -16,10 +16,10 @@ module Probability (
 , (~|)
 
 , union
-, (~&)
+, (&)
 
 , intersection
-, (~/)
+, (#)
 
 ) where
 
@@ -76,7 +76,7 @@ union x@(Intersect xs) y@(Intersect ys)  = mkIntersect $ Set.fromList l
 union x y = Union $ Set.fromList [x, y]
 
 -- | alias for 'union'
-x ~& y = x `union` y
+x & y = x `union` y
 
 
 -- | Two events intersection
@@ -104,17 +104,12 @@ intersection x@(Union xs)     y@(Union ys)      = mkUnion $ Set.fromList l
 intersection x y = mkIntersect $ Set.fromList [x,y]
 
 -- | alias for intersection
-x ~/ y = x `intersection` y
-
--- | Events union
---unions :: (Ord ev) => [Event ev] -> Event ev
---unions []  = error "no events to union"
---unions [e] = e
---unions es  = Union $ Set.fromList es
+x # y = x `intersection` y
 
 
---intersections :: (Ord ev) => [Event ev] -> Event ev
---intersections es = Intersect $ Set.fromList es
+
+
+
 
 
 
