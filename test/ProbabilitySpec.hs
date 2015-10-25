@@ -25,15 +25,39 @@ spec = do
         let a = Ev 'a'
         let b = Ev 'b'
         let c = Ev 'c'
+        let d = Ev 'd'
 
         describe "union" $ do
-            specify "union of atomic events" $
+            specify "of atomic events" $
                     example $ c ~& a ~& c ~& b ~& c `shouldBe` a ~& b ~& c
-            specify "union of unions" $
-                    example $ (a ~& b) ~& (a ~& c) `shouldBe` a ~& b ~& c
-            specify "union with intersect" $ do
-                    example $ (a ~/ b) ~& a `shouldBe` a
-                    example $ (a ~/ b) ~& (a ~/ c) `shouldBe` a ~/ (b ~& c)
-                    example $ (a ~/ b) ~& (a ~& c) `shouldBe` a ~& c
+            specify "of unions" $
+                    example $ (a ~& b) ~& (a ~& c)  `shouldBe` a ~& b ~& c
+            specify "with intersect" $ do
+
+                    example $ (a ~/ b) ~& a         `shouldBe` a
+                    example $ (a ~/ b) ~& d         `shouldBe` (a ~/ b) ~& d
+
+                    example $ (a ~/ b) ~& (a ~/ c)  `shouldBe` a ~/ (b ~& c)
+                    example $ (a ~/ b) ~& (c ~/ d)  `shouldBe` (a ~/ b) ~& (c ~/ d)
+
+                    example $ (a ~/ b) ~& (a ~& c)  `shouldBe` a ~& c
+                    example $ (a ~/ b) ~& (c ~& d)  `shouldBe` (a ~/ b) ~& c ~& d
+
+        describe "intersection" $ do
+            specify "of atomic events" $
+                    example $ c ~/ a ~/ c ~/ b ~/ c `shouldBe` a ~/ b ~/ c
+            specify "of intersections" $
+                    example $ (a ~/ b) ~/ (a ~/ c)  `shouldBe` a ~/ b ~/ c
+            specify "with union" $ do
+
+                    example $ (a ~& b) ~/ a         `shouldBe` a
+                    example $ (a ~& b) ~/ d         `shouldBe` d ~/ (a ~& b)
+
+                    example $ (a ~& b) ~/ (a ~& c)  `shouldBe` a ~& (b ~/ c)
+                    example $ (a ~& b) ~/ (c ~& d)  `shouldBe` (a ~& b) ~/ (c ~& d)
+
+                    example $ (a ~& b) ~/ (a ~/ c)  `shouldBe` a ~/ c
+                    example $ (a ~& b) ~/ (c ~/ d)  `shouldBe` c ~/ d ~/ (a ~& b)
+
     describe "Probability" $ do
         specify "pending" pending

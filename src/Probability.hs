@@ -57,18 +57,21 @@ union x@(Ev _)      (Union ys)  = mkUnion $ Set.insert x ys
 union x@(Union _) y@(Ev _)      = y `union` x
 union (Union xs)    (Union ys)  = mkUnion $ xs `Set.union` ys
 
-union x@(Ev _)          y@(Intersect ys)  = y `union` x
-union x@(Intersect xs)  y@(Ev _) | y `Set.member` xs = y
-                                 | otherwise         = mkUnion $ Set.fromList [x, y]
+union x@(Ev _)         y@(Intersect ys)  = y `union` x
+union x@(Intersect xs) y@(Ev _) | y `Set.member` xs = y
+                                | otherwise         = mkUnion $ Set.fromList [x, y]
 
-union x@(Union xs) y@(Intersect ys) = if any (`Set.member` xs) $ Set.elems ys
-                                        then x
-                                        else mkUnion $ Set.fromList [x,y]
-                                    --Union . Set.insert (Set.filter (`Set.notMember` xs)) ys
-union x@(Intersect _) y@(Union _) = y `union` x
-union (Intersect xs) (Intersect ys) = Intersect $ Set.fromList [mkIntersect common, mkUnion diff]
-                                    where common = xs `Set.intersection` ys
-                                          diff   = (xs \\ ys) `Set.union` (ys \\ xs)
+union x@(Union xs)     y@(Intersect ys) = if any (`Set.member` xs) $ Set.elems ys
+                                            then x
+                                            else mkUnion $ y `Set.insert` xs
+union x@(Intersect _)  y@(Union _)       = y `union` x
+union x@(Intersect xs) y@(Intersect ys)  = mkIntersect $ Set.fromList l
+                                         where common = xs `Set.intersection` ys
+                                               diff   = (xs \\ ys) `Set.union` (ys \\ xs)
+                                               l = if not . Set.null $ common
+                                                    then [mkIntersect common, mkUnion diff]
+                                                    else [x, y]
+
 
 union x y = Union $ Set.fromList [x, y]
 
@@ -79,13 +82,26 @@ x ~& y = x `union` y
 -- | Two events intersection
 intersection :: (Ord ev) => Event ev -> Event ev -> Event ev
 
-intersection x@(Ev _)          (Intersect ys)  = mkIntersect $ Set.insert x ys
-intersection x@(Intersect _) y@(Ev _)          = y `intersection` x
-intersection   (Intersect xs)  (Intersect ys)  = mkIntersect $ xs `Set.union` ys
+intersection x@(Ev _)           (Intersect ys)  = mkIntersect $ Set.insert x ys
+intersection x@(Intersect _)  y@(Ev _)          = y `intersection` x
+intersection   (Intersect xs)   (Intersect ys)  = mkIntersect $ xs `Set.union` ys
 
-intersection x@(Intersect _) y@(Union _)       = mkIntersect $ Set.fromList [x,y]
-intersection x@(Union _)     y@(Intersect _)   = y `intersection` x
-intersection x y = Intersect $ Set.fromList [x,y]
+intersection x@(Ev _)         y@(Union ys) | x `Set.member` ys = x
+                                           | otherwise         = mkIntersect $ Set.fromList [x,y]
+intersection x@(Union _)      y@(Ev _)          = y `intersection` x
+
+intersection x@(Intersect xs) y@(Union ys) | any (`Set.member` xs) $ Set.elems ys = x
+                                           | otherwise = mkIntersect $ Set.fromList [x,y]
+intersection x@(Union _)      y@(Intersect _)   = y `intersection` x
+intersection x@(Union xs)     y@(Union ys)      = mkUnion $ Set.fromList l
+                                           where common = xs `Set.intersection` ys
+                                                 diff   = (xs \\ ys) `Set.union` (ys \\ xs)
+                                                 l = if not . Set.null $ common
+                                                    then [mkUnion common, mkIntersect diff]
+                                                    else [x, y]
+
+
+intersection x y = mkIntersect $ Set.fromList [x,y]
 
 -- | alias for intersection
 x ~/ y = x `intersection` y
