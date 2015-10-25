@@ -9,9 +9,12 @@
 
 module Event (
 
-  Event(Ev, Universal, Null)
+  Event(..)
 
 , EventOps(..)
+
+, mkUnion
+, mkIntersect
 
 ) where
 
