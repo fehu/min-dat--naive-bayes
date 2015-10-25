@@ -18,10 +18,10 @@ module NaiveBayes.Discrete (
 , CountCache
 
 , unknownProbMutMaps
-, getProbOf
-, changeProbOf
+--, getProbOf
+--, changeProbOf
 
-, zeroCountCache
+, emptyCountCache
 , countEvents
 
 , maxLike
@@ -29,7 +29,7 @@ module NaiveBayes.Discrete (
 , updProb
 , updCondProb
 
-, powerset
+--, powerset
 
 ) where
 
@@ -44,7 +44,7 @@ import Data.Set (Set)
 import Data.IORef
 
 import Control.Arrow ((&&&))
-import Control.Monad (mzero)
+import Control.Monad (mzero, liftM)
 import Control.Applicative ((<$>))
 
 import GHC.Float (int2Float)
@@ -70,17 +70,34 @@ type CondProbMutMap ev = KProbMutMap (Event ev, Condition ev)
 
 
 -- | Alias for a 'Map', storing /mutable/ count.
-type CountCache ev =  Map (Event ev) (IORef Int)
+type CountCache ev = IORef (Map (Event ev) (IORef Int))
 
 
 -----------------------------------------------------------------------------
 
+sumContains :: Ord ev => Map (Event ev) (IORef Int) -> Event ev -> IO Int
 
-getMut pmap key = readIORef $ pmap ! key
+sumContains cache e@(Ev _) = sumContains cache . Union $ Set.singleton e
 
-changeMutOf pmap f key = do p <- readIORef pref
-                            writeIORef pref (f p)
-    where pref = pmap ! key
+sumContains cache (Union set) =
+    fmap sum . mapM readIORef . Map.elems
+    $ Map.filterWithKey (\(Union k) _ -> set `Set.isSubsetOf` k) cache
+
+--changeMutOf pmap f key = do p <- readIORef pref
+--                            writeIORef pref (f p)
+--    where pref = pmap ! key
+
+
+--countMutContains contains pmap key = readIORef undefined
+--    where toCount = filterWithKey (\k v ->) pmap
+
+updMutMapRef mref f key = do
+    m <- readIORef mref
+
+    case Map.lookup key m of
+        Just ref -> modifyIORef ref (f . Just)
+        _        -> do ref <- newIORef $ f Nothing
+                       writeIORef mref $ Map.insert key ref m
 
 -----------------------------------------------------------------------------
 
@@ -88,21 +105,21 @@ changeMutOf pmap f key = do p <- readIORef pref
 -- | Create 'ProbMutMap' and 'CondProbMutMap' with unknown probability.
 unknownProbMutMaps :: Ord ev => Set ev -> IO (ProbMutMap ev, CondProbMutMap ev)
 
--- | Get /probability/, stored in a KProbMutMap.
-getProbOf :: Ord k =>
-             k              -- ^ key to search
-          -> KProbMutMap k  -- ^ 'Map' to search
-          -> IO Probability -- ^ the conditional probability
+---- | Get /probability/, stored in a KProbMutMap.
+--getProbOf :: Ord k =>
+--             k              -- ^ key to search
+--          -> KProbMutMap k  -- ^ 'Map' to search
+--          -> IO Probability -- ^ the conditional probability
 
--- | Change probability of a conditional event stored in 'CondProbMutMap'.
-changeProbOf :: Ord k =>
-                (Probability -> Probability) -- ^ change probability
-             -> k                            -- ^ key to affect
-             -> KProbMutMap k                -- ^ 'Map' to change
-             -> IO ()                        -- ^ change 'IO'
+---- | Change probability of a conditional event stored in 'CondProbMutMap'.
+--changeProbOf :: Ord k =>
+--                (Probability -> Probability) -- ^ change probability
+--             -> k                            -- ^ key to affect
+--             -> KProbMutMap k                -- ^ 'Map' to change
+--             -> IO ()                        -- ^ change 'IO'
 
-getProbOf    = flip getMut
-changeProbOf f k m = changeMutOf m f k
+--getProbOf    = flip getMut
+--changeProbOf f k m = changeMutOf m f k
 
 unknownProbMutMaps es = do
     plist  <- sequence $ do e <- Set.elems es
@@ -118,25 +135,21 @@ unknownProbMutMaps es = do
 
 -----------------------------------------------------------------------------
 
-powerset :: Ord a => Set a -> Set (Set a)
-powerset = Set.foldr (\x acc -> acc `Set.union` Set.map (Set.insert x) acc)
-                   $ Set.singleton Set.empty
 
 -- | Create 'CountCache' with zero count.
-zeroCountCache :: Ord ev => Set (Event ev) -> IO (CountCache ev)
-zeroCountCache es = do
-    let sets = Set.elems $ powerset es Set.\\ Set.singleton Set.empty
-    clst <- sequence $ do set <- sets
-                          return $ do ref <- newIORef 0
-                                      return (mkUnion set, ref)
-    return $ Map.fromList clst
+emptyCountCache :: IO (CountCache ev)
+emptyCountCache = newIORef Map.empty
+
 
 countEvents :: Ord ev => CountCache ev -> [Event ev] -> IO ()
-countEvents cache = sequence_ . fmap (changeMutOf cache (1+))
+countEvents cref evs = do
+    cache <- readIORef cref
+    sequence_ $ fmap (updMutMapRef cref (maybe 1 (1+))) evs
 
 cacheSum :: CountCache ev -> IO Int
-cacheSum cache = do
-    cs <- sequence $ do ref <- Map.elems cache
+cacheSum cref = do
+    cache <- readIORef cref
+    cs <- sequence $ do ref  <- Map.elems cache
                         return $ readIORef ref
     return $ sum cs
 
@@ -145,17 +158,19 @@ cacheSum cache = do
 
 -- | Maximum likelihood estimate, using 'CountCache'.
 maxLike :: Ord ev => CountCache ev -> Event ev -> Condition ev -> IO Probability
-maxLike cache ev cond = do
+maxLike cref ev cond = do
     let Union es = ev
-    cEvUn <- getMut cache ev
-    cCond <- getMut cache cond
+    cache <- readIORef cref
+    cEvUn <- sumContains cache (ev & cond)
+    cCond <- sumContains cache cond
     return . probability $ int2Float cEvUn / int2Float cCond
 
 
 updProb :: Ord ev => CountCache ev -> ProbMutMap ev -> IO ()
-updProb cache pmap = do
-    cnt <- int2Float <$> cacheSum cache
-    let f (k, ref) = do c <- getMut cache k
+updProb cref pmap = do
+    cache <- readIORef cref
+    cnt <- int2Float <$> cacheSum cref
+    let f (k, ref) = do c <- sumContains cache k
                         let p = int2Float c / cnt
                         writeIORef ref . probability $ p
     sequence_ . fmap f . Map.assocs $ pmap

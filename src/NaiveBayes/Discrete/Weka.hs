@@ -68,7 +68,7 @@ buildCaches :: [WekaDataAttribute] -> [WekaEvent] -> IO Caches
 buildCaches attrs evs = do
     let wvs = do a@(WekaAttrNom _ domain) <- attrs
                  return . Set.fromList $ map (curry WVal a) domain
-    cCache <- zeroCountCache $ Set.fromList evs
+    cCache <- emptyCountCache
     (pCache, cpCache) <- unknownProbMutMaps $ Set.unions wvs
 
     putStrLn "initial caches built"
@@ -105,29 +105,29 @@ runWeka fname = do RawWekaData name attrs dta <- readWekaData fname
                    cache <- buildCaches attrs entries
 
                    putStrBar '='
---                   putStrLn $ replicate 10 '-' ++ " Finished "
---                           ++ replicate 10 '-' ++ "\n"
---
---                   putStrLn "Events Count:"
---                   putStrLn "------------\n"
---                   printMutMap $ countCache cache
---
---                   putStrLn "Probabilities:"
---                   putStrLn "-------------\n"
---                   printMutMap $ probCache cache
---
---                   putStrLn "Conditional Probabilities:"
---                   putStrLn "-------------------------\n"
---                   printMutMap $ condProbCache cache
+                   putStr $ replicate 25 '=' ++ " Finished "
+                         ++ replicate 25 '=' ++ "\n"
+                   putStrBar '='
+
+                   putStrLn "Events Count:\n"
+                   readIORef (countCache cache) >>= printMutMap "c"
+
+                   putStrBar '-'
+                   putStrLn "Probabilities:\n"
+                   printMutMap "p" $ probCache cache
+
+                   putStrBar '-'
+                   putStrLn "Conditional Probabilities:\n"
+                   printMutMap "p" $ condProbCache cache
 
                    return cache
 
 
-printMutMap mmap = sequence_ $ do (k,ref) <- Map.assocs mmap
-                                  return $ do p <- readIORef ref
-                                              putStrLn $ "p=" ++ show p
-                                                      ++ ", " ++ show k
+printMutMap pref mmap = sequence_ $ do
+    (k,ref) <- Map.assocs mmap
+    return $ do p <- readIORef ref
+                putStrLn $ concat [pref, "=", show p, ", ", show k]
 
-putStrBar c = putStrLn $ "\n" ++ replicate 30 c ++ "\n"
+putStrBar c = putStrLn $ "\n" ++ replicate 60 c ++ "\n"
 
 
