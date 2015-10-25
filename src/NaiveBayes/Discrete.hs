@@ -14,6 +14,23 @@
 
 module NaiveBayes.Discrete (
 
+  KProbMutMap, ProbMutMap, CondProbMutMap
+, CountCache
+
+, unknownProbMutMaps
+, getProbOf
+, changeProbOf
+
+, zeroCountCache
+, countEvents
+
+, maxLike
+
+, updProb
+, updCondProb
+
+, powerset
+
 ) where
 
 import Event
@@ -69,7 +86,7 @@ changeMutOf pmap f key = do p <- readIORef pref
 
 
 -- | Create 'ProbMutMap' and 'CondProbMutMap' with unknown probability.
-unknownProbMutMaps :: Ord ev => Event ev -> IO (ProbMutMap ev, CondProbMutMap ev)
+unknownProbMutMaps :: Ord ev => Set ev -> IO (ProbMutMap ev, CondProbMutMap ev)
 
 -- | Get /probability/, stored in a KProbMutMap.
 getProbOf :: Ord k =>
@@ -87,31 +104,28 @@ changeProbOf :: Ord k =>
 getProbOf    = flip getMut
 changeProbOf f k m = changeMutOf m f k
 
-unknownProbMutMaps ev = do
-    let Union es = ev
+unknownProbMutMaps es = do
     plist  <- sequence $ do e <- Set.elems es
                             return $ do ref <- newIORef (Probability Nothing)
-                                        return (e, ref)
+                                        return (Ev e, ref)
     cplist <- sequence $ do x <- Set.elems es
                             y <- Set.elems es
                             if x /= y
                              then return $ do ref <- newIORef (Probability Nothing)
-                                              return ((x, y), ref)
+                                              return ((Ev x, Ev y), ref)
                              else mzero
     return (Map.fromList plist, Map.fromList cplist)
 
 -----------------------------------------------------------------------------
 
 powerset :: Ord a => Set a -> Set (Set a)
-powerset set | Set.null set = Set.empty
-             | otherwise    = Set.unions (Set.singleton set : psets)
-    where psets = [ powerset $ Set.deleteAt i set | i <- [0..Set.size set] ]
-
+powerset = Set.foldr (\x acc -> acc `Set.union` Set.map (Set.insert x) acc)
+                   $ Set.singleton Set.empty
 
 -- | Create 'CountCache' with zero count.
 zeroCountCache :: Ord ev => Set (Event ev) -> IO (CountCache ev)
 zeroCountCache es = do
-    let sets = Set.elems $ powerset es Set.\\ Set.empty
+    let sets = Set.elems $ powerset es Set.\\ Set.singleton Set.empty
     clst <- sequence $ do set <- sets
                           return $ do ref <- newIORef 0
                                       return (mkUnion set, ref)
