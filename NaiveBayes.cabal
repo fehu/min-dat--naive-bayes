@@ -13,6 +13,7 @@ maintainer:          kdn.kovalev@gmail.com
 category:            DataMining
 build-type:          Simple
 extra-source-files:  README.md
+                     todo.md
 cabal-version:       >=1.10
 
 library
