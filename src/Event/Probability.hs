@@ -13,6 +13,7 @@ module Event.Probability (
 
   Probability(..)
 , probability
+, emptyProbability
 
 , EventProbability(..)
 , EvProb(..)
@@ -69,6 +70,8 @@ instance Num Probability where (+) = probf2 (+)
                                fromInteger 1 = probability 1
                                fromInteger _ = Probability Nothing
 
+instance Fractional Probability where (/) = probf2 (/)
+--                                      fromRational =
 
 probability :: Float -> Probability
 probability p | p >= 0 && p <= 1 = Probability $ Just p
@@ -76,6 +79,8 @@ probability p | p >= 0 && p <= 1 = Probability $ Just p
                                     "probability must be in range [0,1], got "
                                     ++ show p
 
+emptyProbability :: Probability
+emptyProbability = Probability Nothing
 
 -----------------------------------------------------------------------------
 

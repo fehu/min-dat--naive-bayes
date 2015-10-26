@@ -16,6 +16,12 @@
 
 module Event.Probability.Eval.Impl (
 
+  EventDomain(..)
+, EventAtoms(..)
+, AtomicEventDomain
+
+, ProbabilityEval(..)
+
 ) where
 
 import Event
@@ -47,11 +53,11 @@ type AtomicEventDomain event ev = (EventDomain ev, EventAtoms event ev)
 
 --extractAtomEv (Ev ev) = ev
 
-instance ( Monad m, EventProbabilityCache m cacheP cachePC ev
+instance ( EventProbabilityCache cacheP cachePC ev
          , AtomicEventDomain Event ev, Ord ev
-         , ProbabilityCacheUpdate m cacheP cachePC cacheC ev ) =>
+         , ProbabilityCacheUpdate cacheP cachePC cacheC ev ) =>
 
-    ProbabilityEval m cacheP cachePC cacheC ev where
+    ProbabilityEval cacheP cachePC cacheC ev where
 
     tryEvalProb pcache cpcache ccache prob@(EvProb evp) =
         return . EvProb $ updProbability evp p

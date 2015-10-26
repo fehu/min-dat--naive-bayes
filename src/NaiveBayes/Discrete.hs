@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleContexts #-}
+
 -----------------------------------------------------------------------------
 --
 -- Module      :  NaiveBayes.Discrete
@@ -34,11 +36,13 @@ module NaiveBayes.Discrete (
 import Event
 import Event.Probability
 import Event.Probability.Eval
+import Event.Probability.Eval.Impl
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Map (Map, (!))
 import Data.Set (Set)
+import Data.Maybe (fromMaybe)
 
 import Data.IORef
 
@@ -53,11 +57,15 @@ import GHC.Float (int2Float)
 -- | Alias for 'Event'.
 type Condition = Event
 
+type IORefMap k v = IORef (Map k (IORef v))
+
+newtype IORefMap' k v = IORefMap' (IORefMap k v)
+
 -----------------------------------------------------------------------------
 
 
 -- | Alias for a 'Map', storing /mutable/ probability.
-type KProbMutMap k = IORef (Map k (IORef Probability))
+type KProbMutMap k = IORefMap k Probability
 
 -- | Alias for a 'Map', storing /mutable/ probability of events.
 type ProbMutMap ev = KProbMutMap (Event ev)
@@ -67,9 +75,8 @@ type CondProbMutMap ev = KProbMutMap (Event ev, Condition ev)
 
 -----------------------------------------------------------------------------
 
-
 -- | Alias for a 'Map', storing /mutable/ count.
-type CountCache ev = IORef (Map (Event ev) (IORef Int))
+type CountCache ev = IORefMap (Event ev) Int
 
 
 -----------------------------------------------------------------------------
@@ -187,5 +194,111 @@ updCondProb cache cpref = do
 
 -----------------------------------------------------------------------------
 
---instance ProbabilityEval IO cacheP cachePC cacheC ev
+instance (Show key, Ord key) =>
+
+    Cache IORefMap' key val where
+
+        inCache (IORefMap' cref) k = do cache <- readIORef cref
+                                        return $ k `Map.member` cache
+
+        lookupProbCache (IORefMap' cref) k = do
+            cache <- readIORef cref
+            maybe (return Nothing)
+                  (fmap Just . readIORef)
+                  $ Map.lookup k cache
+
+        updateProbCache (IORefMap' cref) k f = do
+            cache <- readIORef cref
+            case Map.lookup k cache of Just ref -> modifyIORef ref f
+                                       _        -> return ()
+
+instance (Show key, Ord key) =>
+
+    MutableCache IORefMap' key vval where
+
+        insertProbInCache (IORefMap' cref) k v = do
+            vref <- newIORef v
+            modifyIORef cref (Map.insert k vref)
+
+
+instance (Show ev, Ord ev) =>
+
+    ProbabilityCacheUpdate IORefMap' IORefMap' IORefMap' ev where
+
+        estimateAndUpdateProb cP cCP cC (EvProb ev) = undefined
+
+
+estimateAndUpdateP :: (Show ev, Ord ev) =>
+                      IORefMap' (Event ev) Int
+                   -> IORefMap' (Event ev) Probability
+                   -> P ev
+                   -> IO Probability
+
+estimateAndUpdateP (IORefMap' cref) prefc (P ev _) = do
+    cache <- readIORef cref
+    cnt <- int2Float <$> cacheSum cref
+    c   <- sumContains cache ev
+    let p = probability $ int2Float c / cnt
+    insertProbInCache prefc ev p
+    return p
+
+estimateAndUpdatePC :: (Show ev, Ord ev) =>
+                       IORefMap' (Event ev) Int
+                    -> IORefMap' (Event ev, Event ev) Probability
+                    -> PCond ev
+                    -> IO Probability
+
+estimateAndUpdatePC (IORefMap' cref) cpc (PCond ev cond _) = do
+    p <- maxLike cref ev cond
+    insertProbInCache cpc (ev, cond) p
+    return p
+
+emptyP  ev      = P ev emptyProbability
+emptyPC ev cond = PCond ev cond emptyProbability
+
+
+estimatePCWithBayes :: (Show ev, Ord ev, EventAtoms Event ev, EventDomain ev) =>
+                       IORefMap' (Event ev) Int
+                    -> IORefMap' (Event ev) Probability
+                    -> IORefMap' (Event ev, Event ev) Probability
+                    -> PCond ev
+                    -> IO Probability
+
+estimatePCWithBayes cc pc cpc (PCond ev cond _) = do
+--    pcache <-
+    -- P(Y = y)
+    mpe <- estimateAndUpdateP  cc pc (emptyP ev)
+    -- P(X.. | Y)
+    mpc <- estimateAndUpdatePC cc cpc (emptyPC cond ev)
+
+--  atoms <- getAtoms ev
+--  let dys = Set.map (eventDomain . extractAtomEv) atoms
+    let atoms'  = fromMaybe (error $ "no atoms decomposition for " ++ show ev) $ getAtoms ev
+    let [atoms] = Set.elems atoms'
+    let dys = Set.map Ev $ eventDomain atoms
+
+    mps <- sequence $ do
+          y <- Set.toList dys
+          return $ do -- P(Y = y')
+                      mpe' <- estimateAndUpdateP  cc pc (emptyP y)
+                      -- P(X.. | Y = y')
+                      mpc' <- estimateAndUpdatePC cc cpc (emptyPC cond y)
+                      return $ mpe' * mpc'
+    return $ mpe * mpc / sum mps
+
+
+instance (Show ev, Ord ev, EventAtoms Event ev, EventDomain ev) =>
+
+    ProbabilityEval IORefMap' IORefMap' IORefMap' ev where
+
+    tryEvalProb pc cpc cc (EvProb prob) = do
+        p <- case toEither prob of Left  p                       -> estimateAndUpdateP cc pc p
+                                   Right cond@(PCond _ (Ev _) _) -> estimateAndUpdatePC cc cpc cond
+                                   Right cond@(PCond (Ev _) _ _) -> estimatePCWithBayes cc pc cpc cond
+
+        return . EvProb $ updProbability prob p
+
+
+
+
 

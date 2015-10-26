@@ -16,6 +16,8 @@
 module Event.Probability.Eval (
 
   Cache(..)
+, MutableCache(..)
+
 , SomeProbabilityCache
 , EventProbabilityCache
 , ProbabilityCacheUpdate(..)
@@ -32,45 +34,45 @@ import Data.Maybe (fromMaybe)
 -----------------------------------------------------------------------------
 
 
-class (Show key) => Cache m cache key v where
-    inCache                    :: cache m v -> key -> Bool
+class (Show key) => Cache cache key v where
+    inCache                    :: cache key v -> key -> IO Bool
 
-    lookupProbCache            :: cache m v -> key -> Maybe (m v)
-    findInProbCacheWithDefault :: cache m v -> m v -> key -> m v
+    lookupProbCache            :: cache key v -> key -> IO (Maybe v)
+    findInProbCacheWithDefault :: cache key v -> v -> key -> IO v
 
-    updateProbCacheSafe        :: cache m v -> key -> (v -> v) -> Maybe (m ())
-    updateProbCache            :: cache m v -> key -> (v -> v) -> m ()
+    updateProbCache            :: cache key v -> key -> (v -> v) -> IO ()
 
-    findInProbCacheWithDefault cache def = fromMaybe def . lookupProbCache cache
-    updateProbCache cache key = fromMaybe err . updateProbCacheSafe cache key
-                            where err = error $ "update error: " ++ show key
-                                             ++ "not found in cache"
+    findInProbCacheWithDefault cache def = fmap (fromMaybe def) . lookupProbCache cache
+--    updateProbCache cache key = fromMaybe err . updateProbCacheSafe cache key
+--                            where err = error $ "update error: " ++ show key
+--                                             ++ "not found in cache"
 
-class (Monad m, Cache m cache key v) =>
-    MutableCache m cache key v where
-        insertProbInCache :: cache m v -> key -> v -> m ()
-        findOrElseUpdate  :: cache m v -> v -> key -> m v
+class (Cache cache key v) =>
+    MutableCache cache key v where
+        insertProbInCache :: cache key v -> key -> v -> IO ()
+        findOrElseUpdate  :: cache key v -> v -> key -> IO v
 
-        findOrElseUpdate cache def k =
-            case lookupProbCache cache k of Just v -> v
-                                            _      -> do insertProbInCache cache k def
-                                                         return def
-
-
-type SomeProbabilityCache m cache key = (Cache m cache key Probability)
-
-type EventProbabilityCache m cacheP cachePC ev =
-        ( MutableCache m cacheP  (Event ev) Probability
-        , MutableCache m cachePC (Event ev, Event ev) Probability )
+        findOrElseUpdate cache def k = do
+            mb <- lookupProbCache cache k
+            case mb of Just v -> return v
+                       _      -> do insertProbInCache cache k def
+                                    return def
 
 
-class (EventProbabilityCache m cacheP cachePC ev, Cache m cacheC (Event ev) Int) =>
+type SomeProbabilityCache cache key = (Cache cache key Probability)
 
-    ProbabilityCacheUpdate m cacheP cachePC cacheC ev where
+type EventProbabilityCache cacheP cachePC ev =
+        ( MutableCache cacheP  (Event ev) Probability
+        , MutableCache cachePC (Event ev, Event ev) Probability )
 
-        estimateAndUpdateProb :: cacheP m Probability
-                              -> cachePC m Probability
-                              -> cacheC m Int
+
+class (EventProbabilityCache cacheP cachePC ev, Cache cacheC (Event ev) Int) =>
+
+    ProbabilityCacheUpdate cacheP cachePC cacheC ev where
+
+        estimateAndUpdateProb :: cacheP  (Event ev) Probability
+                              -> cachePC (Event ev, Event ev) Probability
+                              -> cacheC  (Event ev) Int
                               -> EvProb ev
                               -> Probability
 --        estimatePAndUpdateP   :: cacheP m Probability
@@ -88,15 +90,15 @@ class (EventProbabilityCache m cacheP cachePC ev, Cache m cacheC (Event ev) Int)
 
 
 -- | Tries to calculate the probability of given event(s) using cache.
-class ( EventProbabilityCache  m cacheP cachePC ev
-      , ProbabilityCacheUpdate m cacheP cachePC cacheC ev ) =>
+class ( EventProbabilityCache  cacheP cachePC ev
+      , ProbabilityCacheUpdate cacheP cachePC cacheC ev ) =>
 
-    ProbabilityEval m cacheP cachePC cacheC ev where
-        tryEvalProb :: cacheP  m Probability
-                    -> cachePC m Probability
-                    -> cacheC  m Int
+    ProbabilityEval cacheP cachePC cacheC ev where
+        tryEvalProb :: cacheP  (Event ev) Probability
+                    -> cachePC (Event ev, Event ev) Probability
+                    -> cacheC  (Event ev) Int
                     -> EvProb ev
-                    -> m (EvProb ev)
+                    -> IO (EvProb ev)
 
 
 
