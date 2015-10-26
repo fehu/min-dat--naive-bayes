@@ -44,7 +44,7 @@ module Event.Probability (
 import Event
 
 import Control.Monad
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, fromJust)
 
 -----------------------------------------------------------------------------
 
@@ -85,14 +85,19 @@ probability p | p >= 0 && p <= 1 = Probability $ Just p
 data EvProb ev = forall p . EventProbability p ev => EvProb (p ev)
 
 class EventProbability p ev where getProbability :: p ev -> Probability
+                                  updProbability :: p ev -> Probability -> p ev
+
                                   asProb         :: p ev -> Maybe (P ev)
                                   asCondProb     :: p ev -> Maybe (PCond ev)
+                                  toEither       :: p ev -> Either (P ev) (PCond ev)
 
                                   isCondProb  :: p ev -> Bool
                                   notCondProb :: p ev -> Bool
 
                                   isCondProb  = isJust . asCondProb
                                   notCondProb = not . isCondProb
+                                  toEither p  = maybe cond Left $ asProb p
+                                            where cond = Right . fromJust $ asCondProb p
 
 
 -- | Probability of an event
@@ -105,12 +110,14 @@ data PCond ev = PCond (Event ev) (Event ev) Probability deriving (Eq, Ord)
 
 
 instance EventProbability P     ev where getProbability (P _ p) = p
+                                         updProbability (P e _) = P e
                                          asProb                 = Just
                                          asCondProb _           = Nothing
 
 instance EventProbability PCond ev where getProbability (PCond _ _ p) = p
-                                         asProb _               = Nothing
-                                         asCondProb             = Just
+                                         updProbability (PCond e c _) = PCond e c
+                                         asProb _                     = Nothing
+                                         asCondProb                   = Just
 
 instance Show ev =>
     Show (P ev)  where

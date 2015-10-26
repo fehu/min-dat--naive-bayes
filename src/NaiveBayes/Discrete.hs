@@ -33,6 +33,7 @@ module NaiveBayes.Discrete (
 
 import Event
 import Event.Probability
+import Event.Probability.Eval
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -56,7 +57,7 @@ type Condition = Event
 
 
 -- | Alias for a 'Map', storing /mutable/ probability.
-type KProbMutMap k = Map k (IORef Probability)
+type KProbMutMap k = IORef (Map k (IORef Probability))
 
 -- | Alias for a 'Map', storing /mutable/ probability of events.
 type ProbMutMap ev = KProbMutMap (Event ev)
@@ -129,7 +130,9 @@ unknownProbMutMaps es = do
                              then return $ do ref <- newIORef (Probability Nothing)
                                               return ((Ev x, Ev y), ref)
                              else mzero
-    return (Map.fromList plist, Map.fromList cplist)
+    pref  <- newIORef $ Map.fromList plist
+    cpref <- newIORef $ Map.fromList cplist
+    return (pref, cpref)
 
 -----------------------------------------------------------------------------
 
@@ -165,7 +168,8 @@ maxLike cref ev cond = do
 
 
 updProb :: Ord ev => CountCache ev -> ProbMutMap ev -> IO ()
-updProb cref pmap = do
+updProb cref pref = do
+    pmap  <- readIORef pref
     cache <- readIORef cref
     cnt <- int2Float <$> cacheSum cref
     let f (k, ref) = do c <- sumContains cache k
@@ -175,12 +179,13 @@ updProb cref pmap = do
 
 
 updCondProb :: Ord ev => CountCache ev -> CondProbMutMap ev -> IO ()
-updCondProb cache cpmap = sequence_ . fmap f . Map.assocs $ cpmap
+updCondProb cache cpref = do
+    cpmap <- readIORef cpref
+    sequence_ . fmap f . Map.assocs $ cpmap
     where f ((e, cond), ref) = do p <- maxLike cache e cond
                                   writeIORef ref p
 
-
 -----------------------------------------------------------------------------
 
-
+--instance ProbabilityEval IO cacheP cachePC cacheC ev
 

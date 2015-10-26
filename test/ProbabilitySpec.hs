@@ -81,6 +81,13 @@ spec = do
             specify "intersection"  $ example $ Null # a   `shouldBe` Null
 
 --    describe "Probability" $ do
+--        context "given precalculated cache" $
+--            let pa = a ~~ 0.3
+--            let pb
+--
+--            specify "" $ example undefined
+
+
 --
 --        describe "union: P(A) & P(B) -> P(A & B)" $
 --            specify "P(A & B) = P(A) + P(B) - P(A # B)" $

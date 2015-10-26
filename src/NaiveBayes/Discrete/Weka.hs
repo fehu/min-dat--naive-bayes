@@ -114,11 +114,11 @@ runWeka fname = do RawWekaData name attrs dta <- readWekaData fname
 
                    putStrBar '-'
                    putStrLn "Probabilities:\n"
-                   printMutMap "p" $ probCache cache
+                   readIORef (probCache cache) >>= printMutMap "p"
 
                    putStrBar '-'
                    putStrLn "Conditional Probabilities:\n"
-                   printMutMap "p" $ condProbCache cache
+                   readIORef (condProbCache cache) >>= printMutMap "p"
 
                    return cache
 

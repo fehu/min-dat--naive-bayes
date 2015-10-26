@@ -48,52 +48,55 @@ type AtomicEventDomain event ev = (EventDomain ev, EventAtoms event ev)
 --extractAtomEv (Ev ev) = ev
 
 instance ( Monad m, EventProbabilityCache m cacheP cachePC ev
-         , AtomicEventDomain Event ev, Ord ev ) =>
+         , AtomicEventDomain Event ev, Ord ev
+         , ProbabilityCacheUpdate m cacheP cachePC cacheC ev ) =>
 
-    ProbabilityEval m cacheP cachePC ev where
+    ProbabilityEval m cacheP cachePC cacheC ev where
 
-    tryEvalProb pcache cpcache prob@(EvProb evp)
+    tryEvalProb pcache cpcache ccache prob@(EvProb evp) =
+        return . EvProb $ updProbability evp p
+        where p = estimateAndUpdateProb pcache cpcache ccache prob
 
-        | notCondProb evp = let Just (P ev _) = asProb evp
-            in case lookupProbCache pcache ev of Just mp -> do p <- mp
-                                                               return . EvProb $ ev ~~ p
-                                                 _       -> return prob
-        | otherwise = maybe (return prob) doUpd mbUpd
-            where Just (PCond ev cond _) = asCondProb evp
-                  mbUpd = do -- P(Y = y)
-                             mpe <- lookupProbCache pcache ev
-                             -- P(X.. | Y)
-                             mpc <- lookupProbCache cpcache (cond, ev)
-
---                             atoms <- getAtoms ev
---                             let dys = Set.map (eventDomain . extractAtomEv) atoms
-                             atoms' <- getAtoms ev
-                             let [atoms] = Set.elems atoms'
-                             let dys = Set.map Ev $ eventDomain atoms
-
-                             mps <- sequence $ do
-                                   y <- Set.toList dys
-                                   return $ do -- P(Y = y')
-                                               mpe' <- lookupProbCache pcache y
-                                               -- P(X.. | Y = y')
-                                               mpc' <- lookupProbCache cpcache (cond, y)
-                                               return (mpe', mpc')
-
-                             return (mpe, mpc, mps)
-
-                  doUpd (mpe, mpc, mps) = do
-                        pe <- mpe
-                        pc <- mpc
-
-                        let f (mpe', mpc') = do pe' <- mpe'
-                                                pc' <- mpc'
-                                                return $ pe' * pc'
-                        ps <- mapM f mps
-
-                        let prob = pe * pc * sum ps
-
-                        return .EvProb $ ev ~| cond ~~ prob
-
+--        | notCondProb evp = let Just (P ev _) = asProb evp
+--            in case lookupProbCache pcache ev of Just mp -> do p <- mp
+--                                                               return . EvProb $ ev ~~ p
+--                                                 _       -> return prob
+--        | otherwise = maybe (return prob) doUpd mbUpd
+--            where Just (PCond ev cond _) = asCondProb evp
+--                  mbUpd = do -- P(Y = y)
+--                             mpe <- lookupProbCache pcache ev
+--                             -- P(X.. | Y)
+--                             mpc <- lookupProbCache cpcache (cond, ev)
+--
+----                             atoms <- getAtoms ev
+----                             let dys = Set.map (eventDomain . extractAtomEv) atoms
+--                             atoms' <- getAtoms ev
+--                             let [atoms] = Set.elems atoms'
+--                             let dys = Set.map Ev $ eventDomain atoms
+--
+--                             mps <- sequence $ do
+--                                   y <- Set.toList dys
+--                                   return $ do -- P(Y = y')
+--                                               mpe' <- lookupProbCache pcache y
+--                                               -- P(X.. | Y = y')
+--                                               mpc' <- lookupProbCache cpcache (cond, y)
+--                                               return (mpe', mpc')
+--
+--                             return (mpe, mpc, mps)
+--
+--                  doUpd (mpe, mpc, mps) = do
+--                        pe <- mpe
+--                        pc <- mpc
+--
+--                        let f (mpe', mpc') = do pe' <- mpe'
+--                                                pc' <- mpc'
+--                                                return $ pe' * pc'
+--                        ps <- mapM f mps
+--
+--                        let prob = pe * pc * sum ps
+--
+--                        return .EvProb $ ev ~| cond ~~ prob
+--
 
 
 
