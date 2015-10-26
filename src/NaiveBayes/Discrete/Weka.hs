@@ -24,7 +24,7 @@ module NaiveBayes.Discrete.Weka (
 
 ) where
 
-import Event (mkUnion)
+import Event (mkIntersect)
 import Event.Probability
 import NaiveBayes.Discrete
 
@@ -47,7 +47,7 @@ type WekaEvent = Event WekaVal
 
 -- | Converts 'WekaEntry' to 'WekaEvent'.
 wekaEntry2Event :: WekaEntry -> WekaEvent
-wekaEntry2Event (WEntry set) = mkUnion $ Set.map Ev set
+wekaEntry2Event (WEntry set) = mkIntersect $ Set.map Ev set
 
 -- | Converts RawWekaData to a list of 'WekaEvent's.
 wekaData2Events :: RawWekaData -> [WekaEvent]

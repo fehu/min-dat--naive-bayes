@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, ExistentialQuantification #-}
 
 -- |
 --
@@ -14,10 +14,13 @@ module Event.Probability (
   Probability(..)
 , probability
 
+, EventProbability(..)
+, EvProb(..)
+
 , ProbabilityConstructor ((~~))
 , (~|)
 
-, P
+, P(..)
 , pUnknown
 
 , PCond(..)
@@ -41,6 +44,7 @@ module Event.Probability (
 import Event
 
 import Control.Monad
+import Data.Maybe (isJust)
 
 -----------------------------------------------------------------------------
 
@@ -78,12 +82,35 @@ probability p | p >= 0 && p <= 1 = Probability $ Just p
 
 -----------------------------------------------------------------------------
 
+data EvProb ev = forall p . EventProbability p ev => EvProb (p ev)
+
+class EventProbability p ev where getProbability :: p ev -> Probability
+                                  asProb         :: p ev -> Maybe (P ev)
+                                  asCondProb     :: p ev -> Maybe (PCond ev)
+
+                                  isCondProb  :: p ev -> Bool
+                                  notCondProb :: p ev -> Bool
+
+                                  isCondProb  = isJust . asCondProb
+                                  notCondProb = not . isCondProb
+
+
 -- | Probability of an event
 data P ev = P  (Event ev) Probability                   deriving (Eq, Ord)
 
 -- | Conditional probability of an event
 data PCond ev = PCond (Event ev) (Event ev) Probability deriving (Eq, Ord)
 
+
+
+
+instance EventProbability P     ev where getProbability (P _ p) = p
+                                         asProb                 = Just
+                                         asCondProb _           = Nothing
+
+instance EventProbability PCond ev where getProbability (PCond _ _ p) = p
+                                         asProb _               = Nothing
+                                         asCondProb             = Just
 
 instance Show ev =>
     Show (P ev)  where
@@ -103,15 +130,32 @@ type family UProb a where
     UProb (Event ev)  = P     ev
     UProb (PCond' ev) = PCond ev
 
+--class UProb (from ev) ~ (p ev) =>
+--    ProbabilityConstructor p ev from      where (~~) :: from ev -> Float -> p ev
+--
+--instance Ord ev =>
+--    ProbabilityConstructor P     ev Event   where ev           ~~ p = P ev $
+--                                                                      probability p
+--instance Ord ev =>
+--    ProbabilityConstructor PCond ev PCond'  where (PCond' e c) ~~ p = PCond e c $
+--                                                                      probability p
+
 class UProb (from ev) ~ (p ev) =>
-    ProbabilityConstructor p ev from      where (~~) :: from ev -> Float -> p ev
+    ProbabilityConstructor p ev from pv     where (~~) :: from ev -> pv -> p ev
+
 
 instance Ord ev =>
-    ProbabilityConstructor P     ev Event   where ev           ~~ p = P ev $
-                                                                           probability p
+    ProbabilityConstructor P     ev Event  Float where ev           ~~ p = P ev $
+                                                                      probability p
 instance Ord ev =>
-    ProbabilityConstructor PCond ev PCond'  where (PCond' e c) ~~ p = PCond e c $
-                                                                           probability p
+    ProbabilityConstructor PCond ev PCond' Float where (PCond' e c) ~~ p = PCond e c $
+                                                                      probability p
+
+
+instance Ord ev =>
+    ProbabilityConstructor P     ev Event  Probability where ev           ~~ p = P ev p
+instance Ord ev =>
+    ProbabilityConstructor PCond ev PCond' Probability where (PCond' e c) ~~ p = PCond e c p
 
 
 data PCond' ev = PCond' (Event ev) (Event ev)

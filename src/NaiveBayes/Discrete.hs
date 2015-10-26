@@ -29,8 +29,6 @@ module NaiveBayes.Discrete (
 , updProb
 , updCondProb
 
---, powerset
-
 ) where
 
 import Event
@@ -77,11 +75,11 @@ type CountCache ev = IORef (Map (Event ev) (IORef Int))
 
 sumContains :: Ord ev => Map (Event ev) (IORef Int) -> Event ev -> IO Int
 
-sumContains cache e@(Ev _) = sumContains cache . Union $ Set.singleton e
+sumContains cache e@(Ev _) = sumContains cache . Intersect $ Set.singleton e
 
-sumContains cache (Union set) =
+sumContains cache (Intersect set) =
     fmap sum . mapM readIORef . Map.elems
-    $ Map.filterWithKey (\(Union k) _ -> set `Set.isSubsetOf` k) cache
+    $ Map.filterWithKey (\(Intersect k) _ -> set `Set.isSubsetOf` k) cache
 
 --changeMutOf pmap f key = do p <- readIORef pref
 --                            writeIORef pref (f p)
@@ -159,9 +157,9 @@ cacheSum cref = do
 -- | Maximum likelihood estimate, using 'CountCache'.
 maxLike :: Ord ev => CountCache ev -> Event ev -> Condition ev -> IO Probability
 maxLike cref ev cond = do
-    let Union es = ev
+    let Intersect es = ev
     cache <- readIORef cref
-    cEvUn <- sumContains cache (ev & cond)
+    cEvUn <- sumContains cache (ev # cond)
     cCond <- sumContains cache cond
     return . probability $ int2Float cEvUn / int2Float cCond
 
@@ -180,6 +178,9 @@ updCondProb :: Ord ev => CountCache ev -> CondProbMutMap ev -> IO ()
 updCondProb cache cpmap = sequence_ . fmap f . Map.assocs $ cpmap
     where f ((e, cond), ref) = do p <- maxLike cache e cond
                                   writeIORef ref p
+
+
+-----------------------------------------------------------------------------
 
 
 
