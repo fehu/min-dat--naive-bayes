@@ -41,9 +41,10 @@ module NaiveBayes.Discrete (
 ) where
 
 import Event
+import Event.Extra
 import Event.Probability
+import Event.Probability.Cache
 import Event.Probability.Eval
-import Event.Probability.Eval.Impl
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set

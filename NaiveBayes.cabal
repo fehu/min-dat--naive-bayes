@@ -18,9 +18,10 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Event
+                       Event.Extra
                        Event.Probability
+                       Event.Probability.Cache
                        Event.Probability.Eval
-                       Event.Probability.Eval.Impl
 
                        NaiveBayes
                        NaiveBayes.Discrete
@@ -31,9 +32,10 @@ library
   default-language:    Haskell2010
   default-extensions:  MultiParamTypeClasses
                        FlexibleInstances
-  other-extensions:    TypeFamilies
                        ConstraintKinds
+  other-extensions:    TypeFamilies
                        ExistentialQuantification
+                       FlexibleContexts
 
 
 executable NaiveBayesWeka
@@ -49,6 +51,7 @@ executable NaiveBayesWeka
     default-extensions:   MultiParamTypeClasses
                           FlexibleInstances
                           FlexibleContexts
+                          ConstraintKinds
 
 
 test-suite tests

@@ -7,3 +7,4 @@ TO DO
 - [ ] classification
 - [ ] numeric data
 - [ ] mass refactor
+- [ ] Probability shouldn't be Maybe

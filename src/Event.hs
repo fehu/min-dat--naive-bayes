@@ -38,8 +38,8 @@ data Event ev = Ev ev                       -- ^ An atomic event.
 instance (Show ev) =>
     Show (Event ev) where
         show (Ev e)         = show e
-        show (Union es)     = "(" ++ intercalate "\t&\t" (map show $ Set.toList es) ++ ")"
-        show (Intersect es) = "(" ++ intercalate "\t#\t" (map show $ Set.toList es) ++ ")"
+        show (Union es)     = "(" ++ intercalate " & " (map show $ Set.toList es) ++ ")"
+        show (Intersect es) = "(" ++ intercalate " # " (map show $ Set.toList es) ++ ")"
         show (Complement e) = "'" ++ show e
         show Universal      = "Universe"
         show Null           = "Null"

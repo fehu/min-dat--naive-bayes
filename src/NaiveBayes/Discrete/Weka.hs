@@ -33,9 +33,8 @@ module NaiveBayes.Discrete.Weka (
 ) where
 
 import Event (mkIntersect)
+import Event.Extra
 import Event.Probability
-import Event.Probability.Eval
-import Event.Probability.Eval.Impl
 import NaiveBayes.Discrete
 
 import WekaData

@@ -26,7 +26,6 @@ module Event.Probability (
 
 , PCond(..)
 
-
 ----------------------------
 
 , Event(Ev, Universal, Null)
@@ -44,8 +43,12 @@ module Event.Probability (
 
 import Event
 
+--import Event.Extra
+
 import Control.Monad
 import Data.Maybe (isJust, fromJust)
+import Data.Ratio
+import GHC.Float
 
 -----------------------------------------------------------------------------
 
@@ -71,7 +74,8 @@ instance Num Probability where (+) = probf2 (+)
                                fromInteger _ = Probability Nothing
 
 instance Fractional Probability where (/) = probf2 (/)
---                                      fromRational =
+                                      fromRational r = probability ( fromInteger (numerator r)
+                                                                   / fromInteger (denominator r))
 
 probability :: Float -> Probability
 probability p | p >= 0 && p <= 1 = Probability $ Just p
@@ -84,21 +88,27 @@ emptyProbability = Probability Nothing
 
 -----------------------------------------------------------------------------
 
-
------------------------------------------------------------------------------
-
 data EvProb ev = forall p . (EventProbability p ev, Show (p ev)) => EvProb (p ev)
 
 instance Show (EvProb ev) where show (EvProb p) = show p
 
-class EventProbability p ev where getProbability :: p ev -> Probability
+-- | Interface for 'Probability' of an 'Event'. Can be 'P' or 'PCond'.
+class EventProbability p ev where
+                              -- | get 'Probability' value.
+                                  getProbability :: p ev -> Probability
+                              -- | copy this 'Probability' with new value.
                                   updProbability :: p ev -> Probability -> p ev
 
+                              -- | try to represent as 'P' (pure probability).
                                   asProb         :: p ev -> Maybe (P ev)
+                              -- | try to represent as 'PCond'.
                                   asCondProb     :: p ev -> Maybe (PCond ev)
+                              -- | represent as an 'Either' (conditional probability).
                                   toEither       :: p ev -> Either (P ev) (PCond ev)
 
+                              -- | is conditional?
                                   isCondProb  :: p ev -> Bool
+                              -- | isn't conditional?
                                   notCondProb :: p ev -> Bool
 
                                   isCondProb  = isJust . asCondProb
@@ -144,15 +154,6 @@ type family UProb a where
     UProb (Event ev)  = P     ev
     UProb (PCond' ev) = PCond ev
 
---class UProb (from ev) ~ (p ev) =>
---    ProbabilityConstructor p ev from      where (~~) :: from ev -> Float -> p ev
---
---instance Ord ev =>
---    ProbabilityConstructor P     ev Event   where ev           ~~ p = P ev $
---                                                                      probability p
---instance Ord ev =>
---    ProbabilityConstructor PCond ev PCond'  where (PCond' e c) ~~ p = PCond e c $
---                                                                      probability p
 
 class UProb (from ev) ~ (p ev) =>
     ProbabilityConstructor p ev from pv     where (~~) :: from ev -> pv -> p ev
@@ -178,33 +179,5 @@ data PCond' ev = PCond' (Event ev) (Event ev)
 (~|) :: Event ev -> Event ev -> PCond' ev
 
 e ~| cond = PCond' e cond
-
------------------------------------------------------------------------------
-
-
---   &: P(A) -> P(B) -> P(A&B)
---
---   #: P(A) -> P(B) -> P(A&B)
---
--- neg: 'P(A) -> P('A)
-instance Ord ev =>
-    EventOps (P ev) where
-        -- Union
-        -- P(A) -> P(B) -> P(A&B)
-        -- P(A&B) = P(A) + P(B) - P(A#B)
-        x'@(P x px) `union` y'@(P y py) = pUnknown (x & y) -- x & y & neg (x # y)
-
-        -- Intersection
-        -- P(A) -> P(B) -> P(A#B)
-        x'@(P x px) `intersection` y'@(P y py) = pUnknown (x # y)
-
-        -- Complement
-        -- 'P(A) -> P('A)
-        complement (P x px) = P (neg x) (1-px)
-
-
------------------------------------------------------------------------------
-
-
 
 
