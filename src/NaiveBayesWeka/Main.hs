@@ -20,6 +20,7 @@ import System.Environment
 import System.Exit
 
 import Data.Maybe (fromMaybe)
+import Data.IORef
 
 import qualified Data.Set as Set
 
@@ -42,6 +43,7 @@ parse [fname] = do
     let attrs = [ ("humidity", "high")
                 , ("outlook" , "rainy")
                 , ("temperature", "mild")
+                , ("windy", "TRUE")
                 ]
 
     res <- askPC caches (toW clazz) (Set.fromList $ map toW attrs)
@@ -49,11 +51,25 @@ parse [fname] = do
     putStrLn "Res"
     print res
 
+    printCache caches
+    putStrLn ""
+
+parse _ = unknownCmd >> usage >> exitFailure
+
+
+printCache caches = do
+    putStrLn ""
+    putStrLn "Probabilities:\n"
+    readIORef (probCache caches) >>= printMutMap "p"
+
+    putStrLn ""
+    putStrLn "Conditional Probabilities:\n"
+    readIORef (condProbCache caches) >>= printMutMap "p"
+
+
 --parse [fname] = runWeka fname >> exitSuccess
 
 --parse ([fname, classAttr, classVal]:cond) =
-
-parse _ = unknownCmd >> usage >> exitFailure
 
 
 unknownCmd = putStrLn "unknown command"

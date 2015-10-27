@@ -280,8 +280,13 @@ estimatePCWithBayes cc pc cpc (PCond ev cond _) = do
 --    pcache <-
     -- P(Y = y)
     mpe <- estimateAndUpdateP  cc pc (emptyP ev)
+
+    putStrLn $ "DEBUG: mpe = " ++ show mpe
+
     -- P(X.. | Y)
     mpc <- estimateAndUpdatePC cc cpc (emptyPC cond ev)
+
+    putStrLn $ "DEBUG: mpc = " ++ show mpc
 
 --  atoms <- getAtoms ev
 --  let dys = Set.map (eventDomain . extractAtomEv) atoms
@@ -293,10 +298,21 @@ estimatePCWithBayes cc pc cpc (PCond ev cond _) = do
           y <- Set.toList dys
           return $ do -- P(Y = y')
                       mpe' <- estimateAndUpdateP  cc pc (emptyP y)
+                      putStrLn $ "DEBUG: mpe' = " ++ show mpe'
                       -- P(X.. | Y = y')
                       mpc' <- estimateAndUpdatePC cc cpc (emptyPC cond y)
-                      return $ mpe' * mpc'
-    return $ mpe * mpc / sum mps
+                      putStrLn $ "DEBUG: mpc' = " ++ show mpc'
+                      let p = mpe' * mpc'
+                      putStrLn $ "DEBUG: mpe' * mpc' = " ++ show p
+                      return p
+
+    let sum' = sum mps
+    let res  = mpe * mpc / sum'
+
+    putStrLn $ "DEBUG: sum' = " ++ show sum'
+    putStrLn $ "DEBUG: res = " ++ show res
+
+    return res
 
 
 instance (Show ev, Ord ev, EventAtoms Event ev, EventDomain ev) =>

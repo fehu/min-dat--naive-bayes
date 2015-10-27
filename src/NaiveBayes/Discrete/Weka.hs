@@ -27,6 +27,9 @@ module NaiveBayes.Discrete.Weka (
 , toWekaVal
 , askPC
 
+, Caches(..)
+, printMutMap
+
 ) where
 
 import Event (mkIntersect)
