@@ -58,6 +58,7 @@ import Control.Monad (mzero, liftM)
 import Control.Applicative ((<$>))
 
 import GHC.Float (int2Float)
+import GHC.Generics ((:*:))
 
 -----------------------------------------------------------------------------
 
@@ -276,43 +277,28 @@ estimatePCWithBayes :: (Show ev, Ord ev, EventAtoms Event ev, EventDomain ev) =>
                     -> PCond ev
                     -> IO Probability
 
-estimatePCWithBayes cc pc cpc (PCond ev cond _) = do
---    pcache <-
-    -- P(Y = y)
-    mpe <- estimateAndUpdateP  cc pc (emptyP ev)
+-- assuming: independent events
+estimatePCWithBayes cc pc cpc (PCond ev@(Ev ev') cond@(Intersect cset) _) = do
+    -- Map @y@ -> @P(Y = y) ∏ P(Xi|Y = y)@
+    cpyList <- sequence $ do
+                y <- Set.toList $ eventDomain ev'
+                let mpy  = estimateAndUpdateP cc pc (pUnknown ev)
+                let f    = estimateAndUpdatePC cc cpc
+                         . (\x -> PCond x (Ev y) emptyProbability)
+                let pxms = map f $ Set.toList cset
 
-    putStrLn $ "DEBUG: mpe = " ++ show mpe
+                return $ do py  <- mpy
+                            pxs <- sequence pxms
+                            return (y, (py, pxs))
+    putStrLn "cpyMap:"
+    mapM_ (\(k, v) -> putStrLn $ "\t" ++ show k ++ "\t" ++ show v) cpyList
 
-    -- P(X.. | Y)
-    mpc <- estimateAndUpdatePC cc cpc (emptyPC cond ev)
+    let cpyMap = Map.map (\(y,xs) -> y * sum xs) $ Map.fromList cpyList
 
-    putStrLn $ "DEBUG: mpc = " ++ show mpc
+    let nominator   = cpyMap Map.! ev'
+    let denominator = sum $ Map.elems cpyMap
 
---  atoms <- getAtoms ev
---  let dys = Set.map (eventDomain . extractAtomEv) atoms
-    let atoms'  = fromMaybe (error $ "no atoms decomposition for " ++ show ev) $ getAtoms ev
-    let [atoms] = Set.elems atoms'
-    let dys = Set.map Ev $ eventDomain atoms
-
-    mps <- sequence $ do
-          y <- Set.toList dys
-          return $ do -- P(Y = y')
-                      mpe' <- estimateAndUpdateP  cc pc (emptyP y)
-                      putStrLn $ "DEBUG: mpe' = " ++ show mpe'
-                      -- P(X.. | Y = y')
-                      mpc' <- estimateAndUpdatePC cc cpc (emptyPC cond y)
-                      putStrLn $ "DEBUG: mpc' = " ++ show mpc'
-                      let p = mpe' * mpc'
-                      putStrLn $ "DEBUG: mpe' * mpc' = " ++ show p
-                      return p
-
-    let sum' = sum mps
-    let res  = mpe * mpc / sum'
-
-    putStrLn $ "DEBUG: sum' = " ++ show sum'
-    putStrLn $ "DEBUG: res = " ++ show res
-
-    return res
+    return $ nominator / denominator
 
 
 instance (Show ev, Ord ev, EventAtoms Event ev, EventDomain ev) =>

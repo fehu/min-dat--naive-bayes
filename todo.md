@@ -6,3 +6,4 @@ TO DO
 - [ ] compare with weka
 - [ ] classification
 - [ ] numeric data
+- [ ] mass refactor
