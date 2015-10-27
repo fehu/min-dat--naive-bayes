@@ -19,17 +19,24 @@ module NaiveBayes.Discrete (
   KProbMutMap, ProbMutMap, CondProbMutMap
 , CountCache
 
-, unknownProbMutMaps
+--, unknownProbMutMaps
 --, getProbOf
 --, changeProbOf
 
+, IORefMap
+, IORefMap'(..)
+
 , emptyCountCache
+, emptyProbMutMaps
+
 , countEvents
 
 , maxLike
 
-, updProb
-, updCondProb
+--, updProb
+--, updCondProb
+
+, tryEvalProb
 
 ) where
 
@@ -107,9 +114,14 @@ updMutMapRef mref f key = do
 
 -----------------------------------------------------------------------------
 
+emptyProbMutMaps :: IO (ProbMutMap ev, CondProbMutMap ev)
+emptyProbMutMaps = do
+    pcache  <- newIORef Map.empty
+    cpcache <- newIORef Map.empty
+    return (pcache, cpcache)
 
--- | Create 'ProbMutMap' and 'CondProbMutMap' with unknown probability.
-unknownProbMutMaps :: Ord ev => Set ev -> IO (ProbMutMap ev, CondProbMutMap ev)
+---- | Create 'ProbMutMap' and 'CondProbMutMap' with unknown probability.
+--unknownProbMutMaps :: Ord ev => Set ev -> IO (ProbMutMap ev, CondProbMutMap ev)
 
 ---- | Get /probability/, stored in a KProbMutMap.
 --getProbOf :: Ord k =>
@@ -127,19 +139,19 @@ unknownProbMutMaps :: Ord ev => Set ev -> IO (ProbMutMap ev, CondProbMutMap ev)
 --getProbOf    = flip getMut
 --changeProbOf f k m = changeMutOf m f k
 
-unknownProbMutMaps es = do
-    plist  <- sequence $ do e <- Set.elems es
-                            return $ do ref <- newIORef (Probability Nothing)
-                                        return (Ev e, ref)
-    cplist <- sequence $ do x <- Set.elems es
-                            y <- Set.elems es
-                            if x /= y
-                             then return $ do ref <- newIORef (Probability Nothing)
-                                              return ((Ev x, Ev y), ref)
-                             else mzero
-    pref  <- newIORef $ Map.fromList plist
-    cpref <- newIORef $ Map.fromList cplist
-    return (pref, cpref)
+--unknownProbMutMaps es = do
+--    plist  <- sequence $ do e <- Set.elems es
+--                            return $ do ref <- newIORef (Probability Nothing)
+--                                        return (Ev e, ref)
+--    cplist <- sequence $ do x <- Set.elems es
+--                            y <- Set.elems es
+--                            if x /= y
+--                             then return $ do ref <- newIORef (Probability Nothing)
+--                                              return ((Ev x, Ev y), ref)
+--                             else mzero
+--    pref  <- newIORef $ Map.fromList plist
+--    cpref <- newIORef $ Map.fromList cplist
+--    return (pref, cpref)
 
 -----------------------------------------------------------------------------
 
@@ -174,23 +186,23 @@ maxLike cref ev cond = do
     return . probability $ int2Float cEvUn / int2Float cCond
 
 
-updProb :: Ord ev => CountCache ev -> ProbMutMap ev -> IO ()
-updProb cref pref = do
-    pmap  <- readIORef pref
-    cache <- readIORef cref
-    cnt <- int2Float <$> cacheSum cref
-    let f (k, ref) = do c <- sumContains cache k
-                        let p = int2Float c / cnt
-                        writeIORef ref . probability $ p
-    sequence_ . fmap f . Map.assocs $ pmap
-
-
-updCondProb :: Ord ev => CountCache ev -> CondProbMutMap ev -> IO ()
-updCondProb cache cpref = do
-    cpmap <- readIORef cpref
-    sequence_ . fmap f . Map.assocs $ cpmap
-    where f ((e, cond), ref) = do p <- maxLike cache e cond
-                                  writeIORef ref p
+--updProb :: Ord ev => CountCache ev -> ProbMutMap ev -> IO ()
+--updProb cref pref = do
+--    pmap  <- readIORef pref
+--    cache <- readIORef cref
+--    cnt <- int2Float <$> cacheSum cref
+--    let f (k, ref) = do c <- sumContains cache k
+--                        let p = int2Float c / cnt
+--                        writeIORef ref . probability $ p
+--    sequence_ . fmap f . Map.assocs $ pmap
+--
+--
+--updCondProb :: Ord ev => CountCache ev -> CondProbMutMap ev -> IO ()
+--updCondProb cache cpref = do
+--    cpmap <- readIORef cpref
+--    sequence_ . fmap f . Map.assocs $ cpmap
+--    where f ((e, cond), ref) = do p <- maxLike cache e cond
+--                                  writeIORef ref p
 
 -----------------------------------------------------------------------------
 

@@ -87,7 +87,9 @@ emptyProbability = Probability Nothing
 
 -----------------------------------------------------------------------------
 
-data EvProb ev = forall p . EventProbability p ev => EvProb (p ev)
+data EvProb ev = forall p . (EventProbability p ev, Show (p ev)) => EvProb (p ev)
+
+instance Show (EvProb ev) where show (EvProb p) = show p
 
 class EventProbability p ev where getProbability :: p ev -> Probability
                                   updProbability :: p ev -> Probability -> p ev

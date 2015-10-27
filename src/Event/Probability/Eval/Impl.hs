@@ -43,6 +43,13 @@ class EventAtoms event ev where getAtoms    :: event ev -> Maybe (Set ev)
 type AtomicEventDomain event ev = (EventDomain ev, EventAtoms event ev)
 
 
+instance (Ord ev) =>
+    EventAtoms Event ev where
+        getAtoms (Ev ev)         = Just $ Set.singleton ev
+        getAtoms (Union set)     = Just $ Set.map (\(Ev ev) -> ev) set
+        getAtoms (Intersect set) = Just $ Set.map (\(Ev ev) -> ev) set
+        getAtoms _               = Nothing
+
 ---- | converts 'Ev', 'Union' y 'Intersect' to @Set ev@
 --getAtoms' ev@(Ev _)       = Just $ Set.singleton ev
 --getAtoms' (Union set)     = Just set
@@ -53,15 +60,15 @@ type AtomicEventDomain event ev = (EventDomain ev, EventAtoms event ev)
 
 --extractAtomEv (Ev ev) = ev
 
-instance ( EventProbabilityCache cacheP cachePC ev
-         , AtomicEventDomain Event ev, Ord ev
-         , ProbabilityCacheUpdate cacheP cachePC cacheC ev ) =>
-
-    ProbabilityEval cacheP cachePC cacheC ev where
-
-    tryEvalProb pcache cpcache ccache prob@(EvProb evp) =
-        return . EvProb $ updProbability evp p
-        where p = estimateAndUpdateProb pcache cpcache ccache prob
+--instance ( EventProbabilityCache cacheP cachePC ev
+--         , AtomicEventDomain Event ev, Ord ev
+--         , ProbabilityCacheUpdate cacheP cachePC cacheC ev ) =>
+--
+--    ProbabilityEval cacheP cachePC cacheC ev where
+--
+--    tryEvalProb pcache cpcache ccache prob@(EvProb evp) =
+--        return . EvProb $ updProbability evp p
+--        where p = estimateAndUpdateProb pcache cpcache ccache prob
 
 --        | notCondProb evp = let Just (P ev _) = asProb evp
 --            in case lookupProbCache pcache ev of Just mp -> do p <- mp

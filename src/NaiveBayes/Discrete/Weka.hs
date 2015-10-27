@@ -1,3 +1,5 @@
+{-# LANGUAGE ConstraintKinds #-}
+
 -----------------------------------------------------------------------------
 --
 -- Module      :  NaiveBayes.Discrete.Weka
@@ -22,10 +24,15 @@ module NaiveBayes.Discrete.Weka (
 , buildCaches
 , runWeka
 
+, toWekaVal
+, askPC
+
 ) where
 
 import Event (mkIntersect)
 import Event.Probability
+import Event.Probability.Eval
+import Event.Probability.Eval.Impl
 import NaiveBayes.Discrete
 
 import WekaData
@@ -33,9 +40,8 @@ import WekaData
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
---import Data.Set (Set)
-
-import Data.List (intercalate)
+import Data.Set (Set)
+import Data.List (find, intercalate)
 import Data.IORef (readIORef)
 
 import Control.Arrow ((&&&))
@@ -69,7 +75,7 @@ buildCaches attrs evs = do
     let wvs = do a@(WekaAttrNom _ domain) <- attrs
                  return . Set.fromList $ map (curry WVal a) domain
     cCache <- emptyCountCache
-    (pCache, cpCache) <- unknownProbMutMaps $ Set.unions wvs
+    (pCache, cpCache) <- emptyProbMutMaps
 
     putStrLn "initial caches built"
     let caches  = Caches cCache pCache cpCache
@@ -77,14 +83,29 @@ buildCaches attrs evs = do
     countEvents cCache evs
     putStrLn "updated count cache"
 
-    updProb cCache pCache
-    putStrLn "updated probability cache"
-
-    updCondProb cCache cpCache
-    putStrLn "updated conditional probability cache"
-
     return caches
 
+-----------------------------------------------------------------------------
+
+toWekaVal :: [WekaDataAttribute] -> String -> String -> Maybe WekaVal
+toWekaVal attrs name val = do
+    attr@(WekaAttrNom _ domain) <- find ((name ==) . wekaAttributeName) attrs
+    if val `elem` domain then return $ WVal (attr, val)
+                         else Nothing
+
+askPC :: (AtomicEventDomain Event WekaVal, Show WekaVal) =>
+      Caches -> WekaVal -> Set WekaVal -> IO (EvProb WekaVal)
+
+askPC (Caches cc pc cpc) clazz given = tryEvalProb (IORefMap' pc)
+                                                   (IORefMap' cpc)
+                                                   (IORefMap' cc)
+                                                   (EvProb $ ev ~| cond ~~ emptyProbability)
+    where ev   = Ev clazz
+          cond = Set.foldr (\c acc -> acc # Ev c) Universal given
+
+instance EventDomain WekaVal where
+    eventDomain (WVal (attr@(WekaAttrNom _ domain), _)) =
+        Set.fromList $ map (WVal . (const attr &&& id)) domain
 
 -----------------------------------------------------------------------------
 
@@ -92,8 +113,8 @@ type Filename = String
 
 swap (x,y) = (y,x)
 
-runWeka :: Show WekaVal => Filename -> IO Caches
-runWeka fname = do RawWekaData name attrs dta <- readWekaData fname
+runWeka :: Show WekaVal => Filename -> IO (RawWekaData, Caches)
+runWeka fname = do wdata@(RawWekaData name attrs dta) <- readWekaData fname
                    let entries = wekaSparse2Events attrs dta
 
                    putStr $ "NaiveBayes.Discrete for " ++ show name
@@ -120,7 +141,7 @@ runWeka fname = do RawWekaData name attrs dta <- readWekaData fname
                    putStrLn "Conditional Probabilities:\n"
                    readIORef (condProbCache cache) >>= printMutMap "p"
 
-                   return cache
+                   return (wdata, cache)
 
 
 printMutMap pref mmap = sequence_ $ do
