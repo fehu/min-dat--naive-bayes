@@ -6,5 +6,5 @@ TO DO
 - [ ] compare with weka
 - [ ] classification
 - [ ] numeric data
-- [ ] mass refactor
+- [x] mass refactor
 - [ ] Probability shouldn't be Maybe

@@ -20,7 +20,6 @@ module Event.Probability.Cache (
 
 , SomeProbabilityCache
 , EventProbabilityCache
-, ProbabilityCacheUpdate(..)
 
 ) where
 
@@ -62,15 +61,6 @@ type EventProbabilityCache cacheP cachePC ev =
         , MutableCache cachePC (Event ev, Event ev) Probability )
 
 
-class (EventProbabilityCache cacheP cachePC ev, Cache cacheC (Event ev) Int) =>
-
-    ProbabilityCacheUpdate cacheP cachePC cacheC ev where
-
-        estimateAndUpdateProb :: cacheP  (Event ev) Probability
-                              -> cachePC (Event ev, Event ev) Probability
-                              -> cacheC  (Event ev) Int
-                              -> EvProb ev
-                              -> Probability
 
 
 

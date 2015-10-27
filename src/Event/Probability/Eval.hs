@@ -25,8 +25,7 @@ import Event.Probability.Cache
 
 
 -- | Tries to calculate the probability of given event(s) using cache.
-class ( EventProbabilityCache  cacheP cachePC ev
-      , ProbabilityCacheUpdate cacheP cachePC cacheC ev ) =>
+class (EventProbabilityCache  cacheP cachePC ev) =>
 
     ProbabilityEval cacheP cachePC cacheC ev where
         tryEvalProb :: cacheP  (Event ev) Probability

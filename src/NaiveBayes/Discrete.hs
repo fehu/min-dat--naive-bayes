@@ -19,10 +19,6 @@ module NaiveBayes.Discrete (
   KProbMutMap, ProbMutMap, CondProbMutMap
 , CountCache
 
---, unknownProbMutMaps
---, getProbOf
---, changeProbOf
-
 , IORefMap
 , IORefMap'(..)
 
@@ -30,11 +26,7 @@ module NaiveBayes.Discrete (
 , emptyProbMutMaps
 
 , countEvents
-
 , maxLike
-
---, updProb
---, updCondProb
 
 , tryEvalProb
 
@@ -48,18 +40,13 @@ import Event.Probability.Eval
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
-import Data.Map (Map, (!))
-import Data.Set (Set)
-import Data.Maybe (fromMaybe)
+import Data.Map (Map)
 
 import Data.IORef
 
-import Control.Arrow ((&&&))
-import Control.Monad (mzero, liftM)
 import Control.Applicative ((<$>))
 
 import GHC.Float (int2Float)
-import GHC.Generics ((:*:))
 
 -----------------------------------------------------------------------------
 
@@ -98,13 +85,6 @@ sumContains cache (Intersect set) =
     fmap sum . mapM readIORef . Map.elems
     $ Map.filterWithKey (\(Intersect k) _ -> set `Set.isSubsetOf` k) cache
 
---changeMutOf pmap f key = do p <- readIORef pref
---                            writeIORef pref (f p)
---    where pref = pmap ! key
-
-
---countMutContains contains pmap key = readIORef undefined
---    where toCount = filterWithKey (\k v ->) pmap
 
 updMutMapRef mref f key = do
     m <- readIORef mref
@@ -122,38 +102,6 @@ emptyProbMutMaps = do
     cpcache <- newIORef Map.empty
     return (pcache, cpcache)
 
----- | Create 'ProbMutMap' and 'CondProbMutMap' with unknown probability.
---unknownProbMutMaps :: Ord ev => Set ev -> IO (ProbMutMap ev, CondProbMutMap ev)
-
----- | Get /probability/, stored in a KProbMutMap.
---getProbOf :: Ord k =>
---             k              -- ^ key to search
---          -> KProbMutMap k  -- ^ 'Map' to search
---          -> IO Probability -- ^ the conditional probability
-
----- | Change probability of a conditional event stored in 'CondProbMutMap'.
---changeProbOf :: Ord k =>
---                (Probability -> Probability) -- ^ change probability
---             -> k                            -- ^ key to affect
---             -> KProbMutMap k                -- ^ 'Map' to change
---             -> IO ()                        -- ^ change 'IO'
-
---getProbOf    = flip getMut
---changeProbOf f k m = changeMutOf m f k
-
---unknownProbMutMaps es = do
---    plist  <- sequence $ do e <- Set.elems es
---                            return $ do ref <- newIORef (Probability Nothing)
---                                        return (Ev e, ref)
---    cplist <- sequence $ do x <- Set.elems es
---                            y <- Set.elems es
---                            if x /= y
---                             then return $ do ref <- newIORef (Probability Nothing)
---                                              return ((Ev x, Ev y), ref)
---                             else mzero
---    pref  <- newIORef $ Map.fromList plist
---    cpref <- newIORef $ Map.fromList cplist
---    return (pref, cpref)
 
 -----------------------------------------------------------------------------
 
@@ -175,6 +123,7 @@ cacheSum cref = do
                         return $ readIORef ref
     return $ sum cs
 
+
 -----------------------------------------------------------------------------
 
 
@@ -188,25 +137,8 @@ maxLike cref ev cond = do
     return . probability $ int2Float cEvUn / int2Float cCond
 
 
---updProb :: Ord ev => CountCache ev -> ProbMutMap ev -> IO ()
---updProb cref pref = do
---    pmap  <- readIORef pref
---    cache <- readIORef cref
---    cnt <- int2Float <$> cacheSum cref
---    let f (k, ref) = do c <- sumContains cache k
---                        let p = int2Float c / cnt
---                        writeIORef ref . probability $ p
---    sequence_ . fmap f . Map.assocs $ pmap
---
---
---updCondProb :: Ord ev => CountCache ev -> CondProbMutMap ev -> IO ()
---updCondProb cache cpref = do
---    cpmap <- readIORef cpref
---    sequence_ . fmap f . Map.assocs $ cpmap
---    where f ((e, cond), ref) = do p <- maxLike cache e cond
---                                  writeIORef ref p
-
 -----------------------------------------------------------------------------
+
 
 instance (Show key, Ord key) =>
 
@@ -235,12 +167,7 @@ instance (Show key, Ord key) =>
             modifyIORef cref (Map.insert k vref)
 
 
-instance (Show ev, Ord ev) =>
-
-    ProbabilityCacheUpdate IORefMap' IORefMap' IORefMap' ev where
-
-        estimateAndUpdateProb cP cCP cC (EvProb ev) = undefined
-
+-----------------------------------------------------------------------------
 
 estimateAndUpdateP :: (Show ev, Ord ev) =>
                       IORefMap' (Event ev) Int
@@ -256,6 +183,8 @@ estimateAndUpdateP (IORefMap' cref) prefc (P ev _) = do
     insertProbInCache prefc ev p
     return p
 
+-----------------------------------------------------------------------------
+
 estimateAndUpdatePC :: (Show ev, Ord ev) =>
                        IORefMap' (Event ev) Int
                     -> IORefMap' (Event ev, Event ev) Probability
@@ -266,6 +195,8 @@ estimateAndUpdatePC (IORefMap' cref) cpc (PCond ev cond _) = do
     p <- maxLike cref ev cond
     insertProbInCache cpc (ev, cond) p
     return p
+
+-----------------------------------------------------------------------------
 
 emptyP  ev      = P ev emptyProbability
 emptyPC ev cond = PCond ev cond emptyProbability
@@ -301,6 +232,7 @@ estimatePCWithBayes cc pc cpc (PCond ev@(Ev ev') cond@(Intersect cset) _) = do
 
     return $ nominator / denominator
 
+-----------------------------------------------------------------------------
 
 instance (Show ev, Ord ev, EventAtoms Event ev, EventDomain ev) =>
 
