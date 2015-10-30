@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                NaiveBayes
-version:             0.1.0.0
+version:             0.0.0.1
 synopsis:            Naive Bayes Classificator
 homepage:            https://github.com/fehu/min-dat--naive-bayes
 -- description:
@@ -17,51 +17,25 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Event
-                       Event.Extra
-                       Event.Probability
-                       Event.Probability.Cache
-                       Event.Probability.Eval
-
-                       NaiveBayes
-                       NaiveBayes.Discrete
+  exposed-modules:     EventProbability
   -- other-modules:
   build-depends:        base >=4.7 && <4.8
                       , containers
   hs-source-dirs:      src
   default-language:    Haskell2010
-  default-extensions:  MultiParamTypeClasses
-                       FlexibleInstances
-                       ConstraintKinds
-  other-extensions:    TypeFamilies
-                       ExistentialQuantification
-                       FlexibleContexts
+--  default-extensions:
+--  other-extensions:
 
 
-executable NaiveBayesWeka
-    build-depends: NaiveBayes
-                 , WekaData >= 0.1.2.3
-                 , base >=4.7
-                 , containers >= 0.5.5
-    hs-source-dirs: src
-    main-is:       NaiveBayesWeka/Main.hs
-    other-modules: NaiveBayes.Discrete.Weka
-    buildable: True
-    default-language: Haskell2010
-    default-extensions:   MultiParamTypeClasses
-                          FlexibleInstances
-                          FlexibleContexts
-                          ConstraintKinds
-
-
-test-suite tests
-    build-depends: NaiveBayes
-                 , hspec >= 2.2
-                 , base >= 4.6
-                 , containers >= 0.5
-    type: exitcode-stdio-1.0
-    main-is: tests.hs
-    buildable: True
-    default-language: Haskell2010
-    hs-source-dirs: test
-    other-modules: ProbabilitySpec
+--executable NaiveBayesWeka
+--    build-depends: NaiveBayes
+--                 , WekaData >= 0.1.2.3
+--                 , base >=4.7
+--                 , containers >= 0.5.5
+--    hs-source-dirs: src
+--    main-is:       NaiveBayesWeka/Main.hs
+--    other-modules: NaiveBayesWeka
+--    buildable: True
+--    default-language: Haskell2010
+--    default-extensions:   --MultiParamTypeClasses
+--                          --FlexibleInstances

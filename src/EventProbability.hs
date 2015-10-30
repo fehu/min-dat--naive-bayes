@@ -1,20 +1,21 @@
 -----------------------------------------------------------------------------
 --
--- Module      :  NaiveBayes
--- Copyright   :  
+-- Module      :  EventProbability
+-- Copyright   :
 -- License     :  MIT
 --
 -- Maintainer  :  kdn.kovalev@gmail.com
--- Stability   :  
--- Portability :  
+-- Stability   :
+-- Portability :
 --
 -- |
 --
 -----------------------------------------------------------------------------
 
-module NaiveBayes (
+module EventProbability (
 
 ) where
+
 
 
 
