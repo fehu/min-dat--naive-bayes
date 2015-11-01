@@ -1,6 +1,8 @@
 Naive Bayes
 ===========
 
+[API](http://fehu.github.io/min-dat--naive-bayes/api/frames.html) for version 0.1.0.1.
+
 [to-do](todo.md)
 
 ---
