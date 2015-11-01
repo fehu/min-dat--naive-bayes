@@ -123,6 +123,19 @@ getProb (Prob d) = d
 
 probErrStr = "probability must be within [0,1], but got "
 
+probf  f (Prob mx)           = Prob $ f mx
+probf2 f (Prob mx) (Prob my) = Prob $ f mx my
+
+instance Num Prob where (+) = probf2 (+)
+                        (-) = probf2 (-)
+                        (*) = probf2 (*)
+                        abs = probf abs
+                        signum = probf signum
+                        fromInteger 0 = Prob 0
+                        fromInteger 1 = Prob 1
+                        fromInteger p = error $ npErrStr ++ show p
+
+npErrStr = "probability must be in [0,1], got "
 
 -----------------------------------------------------------------------------
 
