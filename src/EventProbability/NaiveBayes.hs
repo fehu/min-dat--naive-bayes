@@ -11,7 +11,9 @@
 module EventProbability.NaiveBayes ( NaiveBayesCondProb(..) ) where
 
 import EventProbability
-import Data.Map (Map)
+
+import Data.List ( maximumBy )
+import Data.Function ( on )
 
 -----------------------------------------------------------------------------
 
@@ -23,17 +25,23 @@ class (ProbabilityEstimation context m) =>
     estimateDomainCondProbsWithBayes :: context
                                      -> EvAtom -- ^ event that would have it's domain processed.
                                      -> Event  -- ^ condition
-                                     -> m (Map EvAtom Prob) -- ^ Map: atom from domain -> probability.
+                                     -> m [(EvAtom, Prob)] -- ^ Map: atom from domain -> probability.
 
-    -- | tries to classify an 'Event' by given EventName.
+    -- | tries to classify an 'Event' by given 'EvAtom'.
     classifyEvent :: context
-                  -> EventName  -- ^ classify by: 'AtomicEvent' name.
+                  -> EvAtom  -- ^ classify by.
                   -> Event      -- ^ event to classify.
                   -> m (Maybe (EvAtom, Prob))
 
---    classifyEvent ctx ename (Event eset) = undefined
---        where mbc = do ev <-
---        in do probByEv <- estimateDomainCondProbsWithBayes ctx
+    classifyEvent ctx ev event = do
+        probs <- estimateDomainCondProbsWithBayes ctx ev event
+        let max@(_, maxp) = maximumBy (compare `on` snd) probs
+        let maxs          = filter ((==) maxp . snd) probs
+
+        if null probs
+        then return Nothing
+        else if length maxs == 1 then return $ Just max
+                                 else return Nothing
 
 -----------------------------------------------------------------------------
 
