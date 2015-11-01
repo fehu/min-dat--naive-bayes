@@ -21,6 +21,10 @@ import GHC.Float
 
 import Control.Monad       ( liftM )
 import Control.Applicative ( (<$>) )
+--import Control.Arrow       ( (&&&) )
+
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 -----------------------------------------------------------------------------
 
@@ -43,4 +47,14 @@ instance ProbabilityEstimation (EventCaches IO) IO where
 
 instance NaiveBayesCondProb (EventCaches IO) IO where
 
---    estimateDomainCondProbsWithBayes
+    estimateDomainCondProbsWithBayes caches atom (Event condMap) =
+        mapM (\d -> liftM ((,) d) (probOf d)) . Set.toList $ eventDomain atom
+
+        where probOf d = do
+                pd   <- estimateProb caches $ mkEvent d
+                cpds <- sequence $ do
+                        cond <- Map.elems condMap
+                        return $ estimateCondProb caches (mkEvent cond) d
+                return $ pd * sum cpds
+
+
