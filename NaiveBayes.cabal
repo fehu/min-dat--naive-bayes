@@ -19,6 +19,8 @@ cabal-version:       >=1.10
 library
   exposed-modules:     EventProbability
                        EventProbability.Cache
+                       EventProbability.NaiveBayes
+                       EventProbability.DefaultImpl
                        Cache
   -- other-modules:
   build-depends:        base >=4.7 && <4.8
@@ -27,6 +29,7 @@ library
   default-language:    Haskell2010
   default-extensions:  MultiParamTypeClasses
                        ConstraintKinds
+                       FlexibleInstances
   other-extensions:    FlexibleContexts
                        ExistentialQuantification
 

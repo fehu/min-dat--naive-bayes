@@ -17,9 +17,11 @@ module EventProbability (
 
   Event(..)
 , EventName(..)
+, mkEvent
 
 , AtomicEvent(..)
 , EvAtom(..)
+, EventIntersection(..)
 
 , Prob, mkProb, getProb
 
@@ -39,6 +41,9 @@ import Data.Typeable
 
 newtype EventName = EventName String   deriving (Eq, Ord)
 newtype Event     = Event (Set EvAtom) deriving (Eq, Ord)
+
+mkEvent :: EvAtom -> Event
+mkEvent = Event . Set.singleton
 
 instance Show EventName where show (EventName name) = name
 instance Show Event     where show (Event set)      = intercalate " & "
@@ -64,6 +69,24 @@ class AtomicEvent e where
     eventName   :: e -> EventName
     eventDomain :: e -> Set e
 
+
+class EventIntersection e1 e2 where
+    intersect :: e1 -> e2 -> Event
+    (&)       :: e1 -> e2 -> Event
+
+    (&) = intersect
+
+instance EventIntersection EvAtom EvAtom where
+    intersect a b = Event $ Set.fromList [a,b]
+
+instance EventIntersection EvAtom Event where
+    intersect e (Event es) = Event $ Set.insert e es
+
+instance EventIntersection Event EvAtom where
+    intersect = flip intersect
+
+instance EventIntersection Event Event where
+    intersect (Event es1) (Event es2) = Event $ Set.union es1 es2
 
 -----------------------------------------------------------------------------
 
@@ -92,10 +115,4 @@ class (Monad m) =>
                          -> Event  -- ^ the event
                          -> EvAtom -- ^ condition
                          -> m Prob
-        -- | Estimate the conditional probabilities of the domain of an event, given a context.
-        estimateDomainCondProbsWithBayes :: context
-                                         -> EvAtom -- ^ event that would have it's domain processed.
-                                         -> EvAtom -- ^ condition
-                                         -> m (Map EvAtom Prob) -- ^ Map: atom from domain -> probability.
-
 
