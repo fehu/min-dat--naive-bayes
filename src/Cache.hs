@@ -8,7 +8,7 @@
 --
 -- 'Cache' typeclass definition.
 
-module Cache ( Cache(..), IOCache ) where
+module Cache ( Cache(..), IOCache, newIOCache ) where
 
 import qualified Data.Map.Strict as Map
 
@@ -17,6 +17,7 @@ import Data.IORef
 import Data.Map.Strict (Map)
 import Data.Traversable (sequenceA)
 import Control.Monad (liftM)
+import Control.Applicative ( (<$>) )
 
 -----------------------------------------------------------------------------
 
@@ -46,6 +47,9 @@ class (Show key, Monad m, Functor m) => Cache cache m key v where
     -- | Find a value by key or insert the default value otherwise.
     findOrElseInsertM      :: cache key v -> m v -> key -> m (v, cache key v)
 
+    updateOrInsert         :: cache key v -> (Maybe v -> v)   -> key -> m (cache key v)
+    updateOrInsertM        :: cache key v -> (Maybe v -> m v) -> key -> m (cache key v)
+
     findInCacheWithDefault cache def = fmap (fromMaybe def) . lookupCache cache
     findOrElseInsert cache def = findOrElseInsertM cache (return def)
     findOrElseInsertM cache mdef k = do
@@ -54,9 +58,13 @@ class (Show key, Monad m, Functor m) => Cache cache m key v where
                        _      -> do def <- mdef
                                     cache' <- insertInCache cache k def
                                     return (def, cache)
+    updateOrInsert cache f = updateOrInsertM cache (return . f)
 
 
 -----------------------------------------------------------------------------
+
+newIOCache :: IO (IOCache key val)
+newIOCache = IOCache <$> newIORef Map.empty
 
 
 newtype IOCache key val = IOCache (IORef (Map key (IORef val)))
@@ -85,6 +93,14 @@ instance (Show key, Ord key) =>
             vref <- newIORef v
             modifyIORef cref $ Map.insert k vref
             return cache
+
+        updateOrInsertM cache f k = ioFCache (g . Map.lookup k) cache
+                        where g (Just ref) = do v  <- readIORef ref
+                                                v' <- f (Just v)
+                                                writeIORef ref v'
+                                                return cache
+                              g _          = do v' <- f Nothing
+                                                insertInCache cache k v'
 
 liftKVIO (k,vref) = liftM ((,) k) (readIORef vref)
 

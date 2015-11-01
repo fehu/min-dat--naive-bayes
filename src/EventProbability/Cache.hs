@@ -13,6 +13,7 @@ module EventProbability.Cache (
 
   EventCountCache
 , countOccurences
+, updateCountCache
 
 , EventProbCache
 , EventCondProbCache
@@ -33,9 +34,15 @@ import qualified Data.Map as Map
 
 type EventCountCache cache m = Cache cache m Event Int
 
--- | given an event, searches in cache for events, that contain the event in question,
---   and returns thier sum.
-countOccurences :: (EventCountCache cache m) => cache Event Int -> Event -> m Int
+-- | given an event, searches in cache for events,
+--   that contain the event in question, and returns thier sum.
+countOccurences :: (EventCountCache cache m) =>
+    cache Event Int -> Event -> m Int
+
+-- | updates events count (accumulative) in cache.
+updateCountCache :: (EventCountCache cache IO) =>
+    cache Event Int -> [Event] -> IO (cache Event Int)
+
 
 countOccurences cache (Event evset) = do
     mcs <- filterCacheByKey cache (\(Event k) -> evset `Map.isSubmapOf` k)
@@ -43,6 +50,11 @@ countOccurences cache (Event evset) = do
         (_, mc) <- mcs
         return mc
 
+updateCountCache cache events = do sequence_ upds
+                                   return cache
+    where upds = do ev <- events
+                    let f = maybe 1 (1+)
+                    return $ updateOrInsert cache f ev
 
 -----------------------------------------------------------------------------
 

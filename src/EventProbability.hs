@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ExistentialQuantification, FlexibleContexts #-}
 
 -----------------------------------------------------------------------------
 --
@@ -18,6 +18,8 @@ module EventProbability (
   Event(..)
 , EventName(..)
 , mkEvent
+, emptyEvent
+, compositeEvent
 
 , AtomicEvent(..)
 , EvAtom(..)
@@ -51,11 +53,17 @@ evPair = eventName &&& id
 mkEvent :: EvAtom -> Event
 mkEvent = Event . uncurry Map.singleton . evPair
 
+emptyEvent :: Event
+emptyEvent = Event Map.empty
+
+compositeEvent :: (AtomicEvent e, Typeable e, Show e, Ord e) => Set e -> Event
+compositeEvent set | Set.null set = emptyEvent
+                   | otherwise    = Set.foldr ((&) . EvAtom) emptyEvent set
+
 instance Show EventName where show (EventName name) = name
-instance Show Event     where show (Event set)      =
-                                intercalate " & "
-                                . map (\(k,v) -> show k ++ "->" ++ show v)
-                                $ Map.toAscList set
+instance Show Event     where show (Event set)      = intercalate " & "
+                                                    . map (show . snd)
+                                                    $ Map.toAscList set
 
 
 -----------------------------------------------------------------------------
