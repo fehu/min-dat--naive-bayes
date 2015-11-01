@@ -26,6 +26,7 @@ import Cache
 import EventProbability
 
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 
 
 -----------------------------------------------------------------------------
@@ -37,7 +38,7 @@ type EventCountCache cache m = Cache cache m Event Int
 countOccurences :: (EventCountCache cache m) => cache Event Int -> Event -> m Int
 
 countOccurences cache (Event evset) = do
-    mcs <- filterCacheByKey cache (\(Event k) -> evset `Set.isSubsetOf` k)
+    mcs <- filterCacheByKey cache (\(Event k) -> evset `Map.isSubmapOf` k)
     return . sum $ do
         (_, mc) <- mcs
         return mc

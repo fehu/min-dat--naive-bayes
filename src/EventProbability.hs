@@ -30,25 +30,35 @@ module EventProbability (
 ) where
 
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 
 import Data.Set (Set)
 import Data.Map (Map)
 import Data.List (intercalate)
 import Data.Typeable
 
+import Control.Arrow ( (&&&) )
+
 
 -----------------------------------------------------------------------------
 
-newtype EventName = EventName String   deriving (Eq, Ord)
-newtype Event     = Event (Set EvAtom) deriving (Eq, Ord)
+newtype EventName = EventName String             deriving (Eq, Ord)
+newtype Event     = Event (Map EventName EvAtom) deriving (Eq, Ord)
+
+
+evPair = eventName &&& id
 
 mkEvent :: EvAtom -> Event
-mkEvent = Event . Set.singleton
+mkEvent = Event . uncurry Map.singleton . evPair
 
 instance Show EventName where show (EventName name) = name
-instance Show Event     where show (Event set)      = intercalate " & "
-                                                      . map show
-                                                      $ Set.toAscList set
+instance Show Event     where show (Event set)      =
+                                intercalate " & "
+                                . map (\(k,v) -> show k ++ "->" ++ show v)
+                                $ Map.toAscList set
+
+
+-----------------------------------------------------------------------------
 
 
 data EvAtom = forall e . (AtomicEvent e, Show e, Ord e, Typeable e) =>  EvAtom e
@@ -65,10 +75,18 @@ instance Ord  EvAtom where
         case cast b of Just b' -> a `compare` b'
                        _       -> eventName a `compare` eventName b
 
+instance AtomicEvent EvAtom where
+    eventName   (EvAtom e) = eventName e
+    eventDomain (EvAtom e) = Set.map EvAtom $ eventDomain e
+
+
+-----------------------------------------------------------------------------
+
 class AtomicEvent e where
     eventName   :: e -> EventName
     eventDomain :: e -> Set e
 
+-----------------------------------------------------------------------------
 
 class EventIntersection e1 e2 where
     intersect :: e1 -> e2 -> Event
@@ -77,21 +95,23 @@ class EventIntersection e1 e2 where
     (&) = intersect
 
 instance EventIntersection EvAtom EvAtom where
-    intersect a b = Event $ Set.fromList [a,b]
+    intersect a b = Event . Map.fromList $ map evPair [a,b]
 
 instance EventIntersection EvAtom Event where
-    intersect e (Event es) = Event $ Set.insert e es
+    intersect e (Event es) = Event $ Map.insert (eventName e) e es
 
 instance EventIntersection Event EvAtom where
     intersect = flip intersect
 
 instance EventIntersection Event Event where
-    intersect (Event es1) (Event es2) = Event $ Set.union es1 es2
+    intersect (Event es1) (Event es2) = Event $ Map.union es1 es2
 
 -----------------------------------------------------------------------------
 
 -- | Probability value container.
-newtype Prob = Prob Double
+newtype Prob = Prob Double deriving (Eq, Ord)
+
+instance Show Prob where show (Prob p) = show p
 
 mkProb  :: Double -> Prob
 getProb :: Prob -> Double
