@@ -131,8 +131,8 @@ getProb (Prob d) = d
 
 probErrStr = "probability must be within [0,1], but got "
 
-probf  f (Prob mx)           = Prob $ f mx
-probf2 f (Prob mx) (Prob my) = Prob $ f mx my
+probf  f (Prob mx)           = mkProb $ f mx
+probf2 f (Prob mx) (Prob my) = mkProb $ f mx my
 
 instance Num Prob where (+) = probf2 (+)
                         (-) = probf2 (-)

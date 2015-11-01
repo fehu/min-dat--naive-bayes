@@ -55,6 +55,6 @@ instance NaiveBayesCondProb (EventCaches IO) IO where
                 cpds <- sequence $ do
                         cond <- Map.elems condMap
                         return $ estimateCondProb caches (mkEvent cond) d
-                return $ pd * sum cpds
+                return $ pd * product cpds
 
 
