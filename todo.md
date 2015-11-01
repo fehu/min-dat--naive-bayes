@@ -1,3 +1,4 @@
 TO DO
 =====
 
+- [ ] support numerics

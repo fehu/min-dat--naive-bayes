@@ -1,9 +1,11 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
 {-# LANGUAGE FlexibleContexts, ExistentialQuantification #-}
 
 -- |
 --
 -- Module      :  EventProbability.Cache
--- Description :
+-- Description :  'Cache's used for 'Event' probabilities.
 -- License     :  MIT
 --
 --
@@ -11,13 +13,16 @@
 
 module EventProbability.Cache (
 
+-- * Count Cache
   EventCountCache
 , countOccurences
 , updateCountCache
 
+-- * 'Prob' Caches
 , EventProbCache
 , EventCondProbCache
 
+-- * Containers
 , EventCaches(..)
 
 ) where
@@ -32,6 +37,7 @@ import qualified Data.Map as Map
 
 -----------------------------------------------------------------------------
 
+-- | A cache for counting 'Event's.
 type EventCountCache cache m = Cache cache m Event Int
 
 -- | given an event, searches in cache for events,
@@ -58,11 +64,14 @@ updateCountCache cache events = do sequence_ upds
 
 -----------------------------------------------------------------------------
 
+-- | A cache for 'Event's probabilities.
 type EventProbCache      cache m = Cache cache m Event Prob
+-- | A cache for 'Event's conditional probabilities.
 type EventCondProbCache  cache m = Cache cache m (Event, EvAtom) Prob
 
 -----------------------------------------------------------------------------
 
+-- | A container for 'EventProbCache', 'EventProbCache' and 'EventCondProbCache'.
 data EventCaches m = forall cc pc cpc . ( EventCountCache     cc m
                                         , EventProbCache      pc m
                                         , EventCondProbCache cpc m ) =>
@@ -70,10 +79,6 @@ data EventCaches m = forall cc pc cpc . ( EventCountCache     cc m
               , probCache     :: pc  Event           Prob
               , condProbCache :: cpc (Event, EvAtom) Prob
               }
-
------------------------------------------------------------------------------
-
-type EventProbabilityEstimation m = ProbabilityEstimation (EventCaches m) m
 
 -----------------------------------------------------------------------------
 

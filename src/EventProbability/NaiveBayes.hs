@@ -1,10 +1,12 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
 -- |
 --
 -- Module      :  EventProbability.NaiveBayes
--- Description :
+-- Description :  An interface for /Naive Bayes/.
 -- License     :  MIT
 --
---
+-- An interface for /Naive Bayes/.
 --
 
 
@@ -17,6 +19,7 @@ import Data.Function ( on )
 
 -----------------------------------------------------------------------------
 
+-- | An interface for /Naive Bayes/.
 class (ProbabilityEstimation context m) =>
 
     NaiveBayesCondProb context m where
@@ -30,7 +33,7 @@ class (ProbabilityEstimation context m) =>
     -- | tries to classify an 'Event' by given 'EvAtom'.
     classifyEvent :: context
                   -> EvAtom  -- ^ classify by.
-                  -> Event      -- ^ event to classify.
+                  -> Event   -- ^ event to classify.
                   -> m (Maybe (EvAtom, Prob))
 
     classifyEvent ctx ev event = do

@@ -1,23 +1,30 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
 {-# LANGUAGE FlexibleContexts #-}
 
------------------------------------------------------------------------------
+-- |
 --
 -- Module      :  EventProbability.NaiveBayes.Weka
 -- Description :  NaiveBayes for Weka data.
 -- License     :  MIT
 --
--- NaiveBayes learing ald classification for Weka data.
+-- NaiveBayes learing and classification for Weka data.
 --
 
 
 module EventProbability.NaiveBayes.Weka (
 
+-- * Prepare
   wekaEntry2Event
 
+-- * Execute
 , buildCaches
 , classifyWekaData
+, ClassifyResult
 
+-- * Test
 , learnAndTest
+, Filename
 , runWekaLearnAndTest
 
 ) where
@@ -49,11 +56,13 @@ instance AtomicEvent WekaVal where
 
 -----------------------------------------------------------------------------
 
+-- | Build an 'Event' from a 'WekaEntry'.
 wekaEntry2Event :: (Show WekaVal) => WekaEntry -> Event
 wekaEntry2Event (WEntry vals) = compositeEvent vals
 
 -----------------------------------------------------------------------------
 
+-- | Create initial 'EventCaches' and update counts of the 'EventCountCache'.
 buildCaches :: (Show WekaVal) => RawWekaData -> IO (EventCaches IO)
 
 buildCaches rawData = do
@@ -68,21 +77,22 @@ buildCaches rawData = do
 
 -----------------------------------------------------------------------------
 
+-- | Classification result of an 'Event'.
 type ClassifyResult = (Event, Maybe (EvAtom, Prob))
 
+
+-- | Classifies given 'RawWekaData' by given attribute name using 'EventCaches'.
 classifyWekaData :: (Show WekaVal, NaiveBayesCondProb (EventCaches IO) IO) =>
                     EventCaches IO
-                 -> RawWekaData
-                 -> String       -- ^ attribute to clasify.
+                 -> RawWekaData    -- ^ data to classify.
+                 -> String         -- ^ attribute to clasify.
                  -> IO [ClassifyResult]
 
 classifyWekaData caches rawData className = sequence $ do
     ev <- events
     return $ do c <- classifyEvent caches cAtom ev
                 return (ev, c)
---    return $ classifyEvent caches cAtom ev >>= (fmap ((,) ev))
 
---    undefined
     where classifyBy = fromMaybe (error $ errStr ++ show className)
                      $ find ((==) className . wekaAttributeName)
                         $ rwdAttrs rawData
@@ -94,6 +104,8 @@ classifyWekaData caches rawData className = sequence $ do
 
 -----------------------------------------------------------------------------
 
+-- | Teaches a /Naive Bayes/ classifier (updates the caches) with the
+--   /learn/ data and tests the classification quality with the /test/ data.
 learnAndTest :: ( Show WekaVal, Show WekaEntry
                 , NaiveBayesCondProb (EventCaches IO) IO) =>
                 RawWekaData -- ^ /learn/ data.
@@ -146,6 +158,7 @@ learnAndTest learnData testData className showRes = do
 
 type Filename = String
 
+-- | Calls 'learnAndTest' after extracting 'RawWekaData' from the given files.
 runWekaLearnAndTest :: ( Show WekaVal, Show WekaEntry
                        , NaiveBayesCondProb (EventCaches IO) IO) =>
                        Filename -- ^ path to a weka data file with /learn/ data.

@@ -1,29 +1,31 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
 {-# LANGUAGE ExistentialQuantification, FlexibleContexts #-}
 
------------------------------------------------------------------------------
+-- |
 --
 -- Module      :  EventProbability
--- Copyright   :
+-- Description :  Events and probabilities.
 -- License     :  MIT
 --
--- Maintainer  :  kdn.kovalev@gmail.com
--- Stability   :
--- Portability :
---
--- |
+-- Definitions for events and probabilities.
 --
 
 module EventProbability (
 
+-- * Events
   Event(..)
 , EventName(..)
 , mkEvent
 , emptyEvent
 , compositeEvent
 
+-- * Atomic Events
 , AtomicEvent(..)
 , EvAtom(..)
 , EventIntersection(..)
+
+-- * Probability
 
 , Prob, mkProb, getProb
 
@@ -44,31 +46,37 @@ import Control.Arrow ( (&&&) )
 
 -----------------------------------------------------------------------------
 
+-- | A name of an event.
 newtype EventName = EventName String             deriving (Eq, Ord)
+
+-- | An event: intersection of underlying 'EvAtom's.
 newtype Event     = Event (Map EventName EvAtom) deriving (Eq, Ord)
 
 
 evPair = eventName &&& id
 
+-- | Creates a singleton 'Event'.
 mkEvent :: EvAtom -> Event
 mkEvent = Event . uncurry Map.singleton . evPair
 
+-- | Creates an empty 'Event'.
 emptyEvent :: Event
 emptyEvent = Event Map.empty
 
+-- | Creates an /intersection/ 'Event'.
 compositeEvent :: (AtomicEvent e, Typeable e, Show e, Ord e) => Set e -> Event
 compositeEvent set | Set.null set = emptyEvent
                    | otherwise    = Set.foldr ((&) . EvAtom) emptyEvent set
+
 
 instance Show EventName where show (EventName name) = name
 instance Show Event     where show (Event set)      = intercalate " & "
                                                     . map (show . snd)
                                                     $ Map.toAscList set
 
-
 -----------------------------------------------------------------------------
 
-
+-- | An existential container for 'AtomicEvent'.
 data EvAtom = forall e . (AtomicEvent e, Show e, Ord e, Typeable e) =>  EvAtom e
 
 instance Show EvAtom where show (EvAtom a) = show a
@@ -90,14 +98,20 @@ instance AtomicEvent EvAtom where
 
 -----------------------------------------------------------------------------
 
+-- | Atomic (not composite) event.
 class AtomicEvent e where
+    -- | Event's name.
     eventName   :: e -> EventName
+    -- | Event's values domain.
     eventDomain :: e -> Set e
 
 -----------------------------------------------------------------------------
 
+-- | Events intersection builder.
 class EventIntersection e1 e2 where
+    -- | Events intersection.
     intersect :: e1 -> e2 -> Event
+    -- | Alias for 'intersect'.
     (&)       :: e1 -> e2 -> Event
 
     (&) = intersect
@@ -121,7 +135,9 @@ newtype Prob = Prob Double deriving (Eq, Ord)
 
 instance Show Prob where show (Prob p) = show p
 
+-- | Create a 'Prob'.
 mkProb  :: Double -> Prob
+-- | Get 'Double' value from 'Prob'.
 getProb :: Prob -> Double
 
 mkProb d | d >=0 && d <= 1 = Prob d
@@ -147,6 +163,7 @@ npErrStr = "probability must be in [0,1], got "
 
 -----------------------------------------------------------------------------
 
+-- | Interface for 'Event's probability estimation.
 class (Monad m) =>
     ProbabilityEstimation context m where
         -- | Estimate the probability of an event, given a context.

@@ -1,16 +1,15 @@
+{-# OPTIONS_HADDOCK show-extensions #-}
+
 -- |
 --
 -- Module      :  EventProbability.DefaultImpl
--- Description :  Default implementations.
+-- Description :  Instances for 'ProbabilityEstimation' and 'NaiveBayesCondProb'.
 -- License     :  MIT
 --
--- Default implementations for 'ProbabilityEstimation' and 'NaiveBayesCondProb'.
+-- Instances for 'ProbabilityEstimation' and 'NaiveBayesCondProb'.
 --
 
-module EventProbability.DefaultImpl (
-
-) where
-
+module EventProbability.DefaultImpl where
 
 import Cache
 import EventProbability
@@ -21,7 +20,6 @@ import GHC.Float
 
 import Control.Monad       ( liftM )
 import Control.Applicative ( (<$>) )
---import Control.Arrow       ( (&&&) )
 
 import qualified Data.Map as Map
 import qualified Data.Set as Set
@@ -29,6 +27,7 @@ import qualified Data.Set as Set
 -----------------------------------------------------------------------------
 
 -- | Estimates the probabilities and update the corresponding caches.
+--   Implemented in "EventProbability.DefaultImpl".
 instance ProbabilityEstimation (EventCaches IO) IO where
 
     estimateProb (EvCaches cc pc _) ev = fst <$> findOrElseInsertM pc d ev
@@ -45,6 +44,7 @@ instance ProbabilityEstimation (EventCaches IO) IO where
 
 
 
+-- | Implemented in "EventProbability.DefaultImpl".
 instance NaiveBayesCondProb (EventCaches IO) IO where
 
     estimateDomainCondProbsWithBayes caches atom (Event condMap) =

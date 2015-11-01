@@ -1,4 +1,4 @@
---{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_HADDOCK show-extensions #-}
 
 -- |
 --
@@ -8,7 +8,17 @@
 --
 -- 'Cache' typeclass definition.
 
-module Cache ( Cache(..), IOCache, newIOCache ) where
+module Cache (
+
+-- * Abstract
+  Cache(..)
+
+-- * IO Cache
+
+, IOCache
+, newIOCache
+
+) where
 
 import qualified Data.Map.Strict as Map
 
@@ -21,7 +31,7 @@ import Control.Applicative ( (<$>) )
 
 -----------------------------------------------------------------------------
 
-
+-- | An interface for a cache.
 class (Show key, Monad m, Functor m) => Cache cache m key v where
     -- | Exists in cache?
     inCache                :: cache key v -> key -> m Bool
@@ -47,7 +57,9 @@ class (Show key, Monad m, Functor m) => Cache cache m key v where
     -- | Find a value by key or insert the default value otherwise.
     findOrElseInsertM      :: cache key v -> m v -> key -> m (v, cache key v)
 
+    -- | Update a cache entry or insert new if none exists.
     updateOrInsert         :: cache key v -> (Maybe v -> v)   -> key -> m (cache key v)
+    -- | Update a cache entry or insert new if none exists.
     updateOrInsertM        :: cache key v -> (Maybe v -> m v) -> key -> m (cache key v)
 
     findInCacheWithDefault cache def = fmap (fromMaybe def) . lookupCache cache
@@ -63,10 +75,11 @@ class (Show key, Monad m, Functor m) => Cache cache m key v where
 
 -----------------------------------------------------------------------------
 
+-- | Creates an empty 'IOCache'.
 newIOCache :: IO (IOCache key val)
 newIOCache = IOCache <$> newIORef Map.empty
 
-
+-- | 'IO' 'Cache'.
 newtype IOCache key val = IOCache (IORef (Map key (IORef val)))
 
 instance (Show key, Ord key) =>
