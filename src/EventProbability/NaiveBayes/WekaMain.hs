@@ -51,7 +51,3 @@ usage = do putStrLn "Usage: NaiveBayesWeka [-h] learn-file test-file class-name\
            putStrLn "       test-file    | *.arff nominal data file, containing the testing data" -- TODO: numerics!
            putStrLn "       class-name   | name of the attribute to classify by"
 
-tpError = error "--iter argument must  must be a Float in [0, 1]"
-
-
-

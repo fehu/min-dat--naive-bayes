@@ -39,7 +39,7 @@ import WekaData
 
 import qualified Data.Set as Set
 
-import Data.Maybe    ( fromMaybe )
+import Data.Maybe    ( fromMaybe, maybeToList )
 import Data.List     ( find )
 import Data.Typeable
 import Control.Arrow ( (&&&) )
@@ -119,9 +119,8 @@ learnAndTest learnData testData className showRes = do
     testClassify <- classifyWekaData caches testData className
 
     -- for showRes
-    let err =  "class '" ++ className ++ "' not found in "
-    let getClass e@(WEntry set) = fromMaybe (error $ err ++ show e)
-                                $ find (\(WVal a _)-> className == wekaAttributeName a)
+    let err = "class '" ++ className ++ "' not found in "
+    let getClass e@(WEntry set) = find (\(WVal a _)-> className == wekaAttributeName a)
                                 $ Set.toList set
 
     let expectedRes = map getClass $ wekaData2Sparse testData
@@ -142,14 +141,15 @@ learnAndTest learnData testData className showRes = do
 
     when showRes $ do
         results <- sequence $ do
-            ((ev, mbClass), exp) <- zip testClassify expectedRes
-            return $ maybe (notClassified ev exp) (compareClassified ev exp) mbClass
+            ((ev, mbClass), mbExp) <- zip testClassify expectedRes
+            let compare exp = maybe (notClassified ev exp) (compareClassified ev exp) mbClass
+            maybe [] (return . compare) mbExp
 
         let ok = length $ filter id results
 
         putStrLn $ replicate 30 '='
         putStrLn $ show ok ++ "\t classified correctly"
-        putStrLn $ show (length testClassify - ok) ++ "\t classified incorrectly"
+        putStrLn $ show (length results - ok) ++ "\t classified incorrectly"
 
     return (caches, testClassify)
 

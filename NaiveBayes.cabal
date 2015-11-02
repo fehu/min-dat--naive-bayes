@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                NaiveBayes
-version:             0.1.0.2
+version:             0.1.0.3
 
 synopsis:            Naive Bayes Classificator
 homepage:            https://github.com/fehu/min-dat--naive-bayes
