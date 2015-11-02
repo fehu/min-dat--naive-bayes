@@ -49,10 +49,10 @@ import Control.Monad ( when )
 
 instance AtomicEvent WekaVal where
 
-    eventName (WVal (attr,_)) = EventName $ wekaAttributeName attr
+    eventName (WVal attr _) = EventName $ wekaAttributeName attr
 
-    eventDomain (WVal (attr@(WekaAttrNom _ dom), _)) =
-        Set.fromList $ map (WVal . (const attr &&& id)) dom
+    eventDomain (WVal attr@(WekaAttrNom _ dom) _) =
+        Set.fromList $ map (uncurry WVal . (const attr &&& id)) dom
 
 -----------------------------------------------------------------------------
 
@@ -73,7 +73,7 @@ buildCaches rawData = do
     updateCountCache cc events
     return $ EvCaches cc pc cpc
 
-    where events = map wekaEntry2Event $ wekaData2SparseWEntries rawData
+    where events = map wekaEntry2Event $ wekaData2Sparse rawData
 
 -----------------------------------------------------------------------------
 
@@ -97,9 +97,9 @@ classifyWekaData caches rawData className = sequence $ do
                      $ find ((==) className . wekaAttributeName)
                         $ rwdAttrs rawData
           errStr = "couldn't find an attribute with name "
-          cAtom  = EvAtom $ WVal (classifyBy, undefined)
+          cAtom  = EvAtom $ WVal classifyBy undefined
 
-          events = map wekaEntry2Event $ wekaData2SparseWEntries rawData
+          events = map wekaEntry2Event $ wekaData2Sparse rawData
 
 
 -----------------------------------------------------------------------------
@@ -121,10 +121,10 @@ learnAndTest learnData testData className showRes = do
     -- for showRes
     let err =  "class '" ++ className ++ "' not found in "
     let getClass e@(WEntry set) = fromMaybe (error $ err ++ show e)
-                                $ find (\(WVal (a,_))-> className == wekaAttributeName a)
+                                $ find (\(WVal a _)-> className == wekaAttributeName a)
                                 $ Set.toList set
 
-    let expectedRes = map getClass $ wekaData2SparseWEntries testData
+    let expectedRes = map getClass $ wekaData2Sparse testData
 
     let notClassified ev exp = do
             putStrLn $ "\n[?]" ++ show ev ++ " wasn't classified, expected " ++ show exp
