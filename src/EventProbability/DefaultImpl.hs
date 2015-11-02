@@ -33,14 +33,18 @@ instance ProbabilityEstimation (EventCaches IO) IO where
     estimateProb (EvCaches cc pc _) ev = fst <$> findOrElseInsertM pc d ev
         where d = do cEv    <- countOccurences cc ev
                      cTotal <- (sum . map snd) <$> listCache cc
-                     return . mkProb $ int2Double cEv / int2Double cTotal
+                     return $ if cTotal == 0
+                        then 0
+                        else mkProb $ int2Double cEv / int2Double cTotal
 
     -- | Max likelihood
     estimateCondProb (EvCaches cc _ cpc) ev cond =
         fst <$> findOrElseInsertM cpc d (ev, cond)
         where d = do cEv   <- countOccurences cc $ ev & cond
                      cCond <- countOccurences cc $ mkEvent cond
-                     return . mkProb $ int2Double cEv / int2Double cCond
+                     return $ if cCond == 0
+                        then 0
+                        else mkProb $ int2Double cEv / int2Double cCond
 
 
 
